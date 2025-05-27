@@ -59,7 +59,7 @@ export default {
           this.secretary = responseBody[0];
           this.fullName = `${this.secretary.Surname} ${this.secretary.Name} ${this.secretary.Patronymic}`;
           localStorage.setItem("secretary", JSON.stringify(this.secretary));
-          this.$router.push("/profile");
+          this.$router.push("/homepage");
         } else {
           this.secretary = null;
           this.fullName = "";
@@ -86,7 +86,7 @@ export default {
         window.location.href =
           "https://int.istu.edu/oauth/authorize?client_id=local.65581f0597f2b3.73164583&redirect_uri=http://localhost:9000/api/accounts/bitrix-auth/&response_type=code";
       } else {
-        this.$router.push("/profile");
+        this.$router.push("/homepage");
       }
     },
   },

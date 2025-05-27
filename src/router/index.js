@@ -15,7 +15,68 @@ const routes = [
     component: ProfileView,
     meta: { requiresAuth: true },
   },
-  // Перехватываем все пути и перенаправляем на корень для обработки
+  {
+    path: "/homepage",
+    name: "HomePage",
+    component: () => import("../components/HomePage.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/uploadlist",
+    name: "UploadList",
+    component: () => import("../components/UploadList.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/formcommission",
+    name: "FormCommission",
+    component: () => import("../components/FormCommission.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/generateprotocols",
+    name: "GenerateProtocols",
+    component: () => import("../components/GenerateProtocols.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/uploadschedule",
+    name: "UploadSchedule",
+    component: () => import("../components/UploadSchedule.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/archive",
+    name: "Archive",
+    component: () => import("../components/Archive.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/projectdefense",
+    name: "ProjectDefense",
+    component: () => import("../components/ProjectDefense.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/projectschedule",
+    name: "ProjectSchedule",
+    component: () => import("../components/ProjectSchedule.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/protocollist",
+    name: "ProtocolList",
+    component: () => import("../components/ProtocolList.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/projects/:projectId/questions",
+    name: "ProjectQuestions",
+    component: () => import("../components/ProjectQuestions.vue"),
+    props: true,
+    meta: { requiresAuth: true },
+  },
+
   { path: "/:catchAll(.*)", redirect: "/" },
 ];
 
