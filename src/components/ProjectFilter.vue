@@ -124,6 +124,41 @@
             {{ formatDateTime(selectedScheduleDateTime) }}
           </div>
         </div>
+
+        <div
+          v-if="selectedCommission && commissionComposition.length > 0"
+          class="commission-composition"
+        >
+          <div class="composition-header">
+            <div class="composition-icon">👥</div>
+            <h4>Состав комиссии</h4>
+          </div>
+          <div v-if="loadingComposition" class="loading-indicator">
+            <div class="loading-spinner"></div>
+            <span>Загрузка состава...</span>
+          </div>
+          <div v-else-if="errorComposition" class="error-message">
+            <div class="error-icon">⚠️</div>
+            <span>{{ errorComposition }}</span>
+          </div>
+          <div v-else class="composition-list">
+            <div
+              v-for="member in commissionComposition"
+              :key="member.ID"
+              class="composition-member"
+            >
+              <div class="member-info">
+                <div class="member-name">
+                  {{ member.ID_Member.Surname }} {{ member.ID_Member.Name }}
+                  {{ member.ID_Member.Patronymic }}
+                </div>
+                <div class="member-role" :class="getRoleClass(member.Role)">
+                  {{ member.Role }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -161,14 +196,17 @@ export default {
       specializations: [],
       commissions: [],
       schedules: [],
+      commissionComposition: [],
 
       loadingSpecializations: false,
       loadingCommissions: false,
       loadingSchedules: false,
+      loadingComposition: false,
 
       errorSpecializations: null,
       errorCommissions: null,
       errorSchedules: null,
+      errorComposition: null,
 
       selectedSpecializationName: "",
       selectedCommissionName: "",
@@ -219,7 +257,10 @@ export default {
         const response = await axios.get(
           "http://localhost:8000/api/secretary_specialization/",
           {
-            params: { ID_Secretary: this.secretaryId },
+            params: {
+              ID_Secretary: this.secretaryId,
+              specialization_status: true,
+            },
           }
         );
         this.specializations = response.data;
@@ -246,6 +287,7 @@ export default {
             params: {
               id_member: this.secretaryId,
               role: "Секретарь",
+              ID_Specialization: this.selectedSpecialization,
             },
           }
         );
@@ -258,8 +300,33 @@ export default {
       }
     },
 
-    async loadSchedules() {
+    async loadCommissionComposition() {
       if (!this.selectedCommission) return;
+
+      this.loadingComposition = true;
+      this.errorComposition = null;
+
+      try {
+        const response = await axios.get(
+          "http://127.0.0.1:8000/api/commission_compositions/"
+        );
+
+        this.commissionComposition = response.data.filter(
+          (member) => member.ID_Commission === this.selectedCommission
+        );
+
+        console.log("Состав комиссии:", this.commissionComposition);
+      } catch (error) {
+        console.error("Ошибка загрузки состава комиссии:", error);
+        this.errorComposition = "Не удалось загрузить состав комиссии";
+      } finally {
+        this.loadingComposition = false;
+      }
+    },
+
+    async loadSchedules() {
+      if (!this.selectedSpecialization) return;
+      if (!this.secretaryId) return;
 
       this.loadingSchedules = true;
       this.errorSchedules = null;
@@ -268,7 +335,7 @@ export default {
         const response = await axios.get(
           "http://localhost:8000/api/defenses/",
           {
-            params: { ID_Commission: this.selectedCommission },
+            params: { specialization_id: this.selectedSpecialization },
           }
         );
         this.schedules = response.data;
@@ -287,6 +354,7 @@ export default {
       this.selectedScheduleDateTime = "";
       this.commissions = [];
       this.schedules = [];
+      this.commissionComposition = [];
 
       const selectedSpec = this.specializations.find(
         (s) => s.ID_Specialization.ID === this.selectedSpecialization
@@ -304,6 +372,7 @@ export default {
       this.selectedSchedule = "";
       this.selectedScheduleDateTime = "";
       this.schedules = [];
+      this.commissionComposition = [];
 
       const selectedComm = this.commissions.find(
         (c) => c.ID === this.selectedCommission
@@ -313,6 +382,7 @@ export default {
       }
 
       this.loadSchedules();
+      this.loadCommissionComposition();
 
       this.saveFiltersToStorage();
     },
@@ -326,6 +396,20 @@ export default {
       }
 
       this.saveFiltersToStorage();
+    },
+
+    getRoleClass(role) {
+      switch (role) {
+        case "Председатель":
+          return "role-chairman";
+        case "Секретарь":
+          return "role-secretary";
+        case "Член аттестационной комиссии":
+        case "Член аттестационной комиссии ":
+          return "role-member";
+        default:
+          return "role-default";
+      }
     },
 
     applyFilters() {
@@ -354,6 +438,7 @@ export default {
       this.selectedScheduleDateTime = "";
       this.commissions = [];
       this.schedules = [];
+      this.commissionComposition = [];
 
       sessionStorage.removeItem("projectFilterParams");
 
@@ -394,6 +479,7 @@ export default {
 
           if (this.selectedCommission) {
             await this.loadSchedules();
+            await this.loadCommissionComposition();
 
             this.selectedSchedule = params.scheduleId || "";
             this.selectedScheduleDateTime = params.scheduleDateTime || "";
@@ -454,6 +540,13 @@ h3 {
   font-weight: 600;
   margin: 0;
   font-size: 1.1rem;
+}
+
+h4 {
+  color: #1e293b;
+  font-weight: 600;
+  margin: 0;
+  font-size: 1rem;
 }
 
 .filter-container {
@@ -604,6 +697,91 @@ h3 {
   color: #1e293b;
 }
 
+.commission-composition {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background-color: #fafbfc;
+}
+
+.composition-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background-color: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.composition-icon {
+  font-size: 1.1rem;
+}
+
+.composition-list {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.composition-member {
+  padding: 0.75rem;
+  background-color: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  transition: box-shadow 0.2s;
+}
+
+.composition-member:hover {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.member-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.member-name {
+  font-weight: 500;
+  color: #1e293b;
+  font-size: 0.95rem;
+}
+
+.member-role {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.role-chairman {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fbbf24;
+}
+
+.role-secretary {
+  background-color: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #60a5fa;
+}
+
+.role-member {
+  background-color: #f3e8ff;
+  color: #7c3aed;
+  border: 1px solid #a78bfa;
+}
+
+.role-default {
+  background-color: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+}
+
 .filter-actions {
   display: flex;
   gap: 1rem;
@@ -661,6 +839,16 @@ h3 {
 
   .selected-params-content {
     flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .commission-composition {
+    margin-top: 0.5rem;
+  }
+
+  .member-info {
+    flex-direction: column;
+    align-items: flex-start;
     gap: 0.5rem;
   }
 

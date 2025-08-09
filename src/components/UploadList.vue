@@ -306,6 +306,8 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+    Helvetica, Arial, sans-serif;
 }
 
 h2 {
@@ -325,14 +327,14 @@ h2 {
 .selector-label {
   font-weight: 600;
   color: #1e293b;
-  font-size: 1rem;
+  font-size: 20px;
 }
 
 .specialization-select {
   padding: 12px 16px;
   border: 2px solid #e2e8f0;
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: 1.2rem;
   background-color: white;
   color: #1e293b;
   transition: border-color 0.2s;

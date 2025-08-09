@@ -266,6 +266,8 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+    Helvetica, Arial, sans-serif;
 }
 
 h2 {

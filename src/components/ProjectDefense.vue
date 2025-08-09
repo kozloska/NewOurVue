@@ -299,17 +299,43 @@
                   <div class="detail-card-title">Аудиозапись защиты</div>
                 </div>
                 <div class="audio-recorder">
-                  <button
-                    v-if="!audioBlob"
-                    @click="toggleRecording"
-                    :class="['record-button', { recording: isRecording }]"
-                  >
-                    <span class="button-icon">{{
-                      isRecording ? "⏹️" : "🎙️"
-                    }}</span>
-                    {{ isRecording ? "Остановить запись" : "Начать запись" }}
-                    <span v-if="isRecording" class="recording-indicator"></span>
-                  </button>
+                  <div class="audio-controls">
+                    <button
+                      v-if="!audioBlob && !isRecording"
+                      @click="toggleRecording"
+                      class="record-button"
+                    >
+                      <span class="button-icon">🎙️</span>
+                      Начать запись
+                    </button>
+
+                    <input
+                      ref="localAudioInput"
+                      type="file"
+                      accept="audio/*"
+                      @change="handleLocalAudioUpload"
+                      style="display: none"
+                    />
+
+                    <button
+                      v-if="!audioBlob && !isRecording"
+                      @click="$refs.localAudioInput.click()"
+                      class="record-button local-upload-button"
+                    >
+                      <span class="button-icon">📁</span>
+                      Загрузить аудио
+                    </button>
+
+                    <button
+                      v-if="isRecording"
+                      @click="toggleRecording"
+                      class="record-button recording"
+                    >
+                      <span class="button-icon">⏹️</span>
+                      Остановить запись
+                      <span class="recording-indicator"></span>
+                    </button>
+                  </div>
 
                   <div v-if="audioBlob" class="audio-preview">
                     <audio
@@ -578,6 +604,7 @@
                       <option value="Неудовлетворительно">
                         Неудовлетворительно
                       </option>
+                      <option value="Пересдача">Пересдача</option>
                     </select>
                   </div>
 
@@ -596,18 +623,11 @@
 
               <div class="grading-actions">
                 <button
-                  @click="generateAllProtocols"
-                  class="action-button generate-all-button"
-                  :disabled="!canGenerateProtocols || generatingProtocols"
+                  @click="goToProjectFilter"
+                  class="action-button filter-button"
                 >
-                  <span class="button-icon">{{
-                    generatingProtocols ? "⏳" : "📋"
-                  }}</span>
-                  {{
-                    generatingProtocols
-                      ? "Формируем..."
-                      : "Сформировать протоколы"
-                  }}
+                  <span class="button-icon">🔍</span>
+                  Закончить
                 </button>
               </div>
 
@@ -661,6 +681,7 @@ export default {
       updateInterval: null,
       startingDefense: {},
       generatingProtocols: false,
+      localAudioFile: null,
     };
   },
   computed: {
@@ -702,10 +723,45 @@ export default {
       }
     },
 
-    handleFilterApplied(filterParams) {
+    async handleFilterApplied(filterParams) {
       this.activeFilters = filterParams;
       this.showProjects = true;
+
+      await this.updateDefenseScheduleCommission(
+        filterParams.scheduleId,
+        filterParams.commissionId
+      );
+
       this.loadProjectsBySchedule(filterParams.scheduleId);
+    },
+
+    async updateDefenseScheduleCommission(scheduleId, commissionId) {
+      if (!scheduleId) return;
+
+      try {
+        const payload = {};
+
+        if (commissionId) {
+          payload.ID_Commission = commissionId;
+        } else {
+          payload.ID_Commission = null;
+        }
+
+        const response = await axios.patch(
+          `http://localhost:8000/api/defenses/${scheduleId}/`,
+          payload
+        );
+
+        if (response.status === 200) {
+          console.log("DefenseSchedule успешно обновлен");
+        }
+      } catch (error) {
+        console.error("Ошибка обновления DefenseSchedule:", error);
+        alert(
+          "Ошибка при обновлении расписания: " +
+            (error.response?.data?.message || error.message)
+        );
+      }
     },
 
     backToFilters() {
@@ -735,9 +791,10 @@ export default {
 
         this.projects = response.data;
 
-        this.projects.forEach((project) => {
+        for (const project of this.projects) {
+          await this.loadProjectDefenseTimes(project);
           this.loadStudentsForProject(project.ID);
-        });
+        }
       } catch (err) {
         this.error = `Ошибка загрузки проектов: ${
           err.response?.data?.message || err.message
@@ -772,12 +829,8 @@ export default {
       this.selectedProject = project;
     },
 
-    closeModal(event) {
-      if (event && event.target.classList.contains("modal-overlay")) {
-        this.selectedProject = null;
-      } else if (!event) {
-        this.selectedProject = null;
-      }
+    closeModal() {
+      this.selectedProject = null;
     },
 
     async openQuestionsModal(project) {
@@ -807,6 +860,7 @@ export default {
         await axios.post("http://localhost:8000/api/questions/", {
           Text: this.newQuestionText,
           ID_Project: this.selectedProject.ID,
+          Status: false,
         });
         this.newQuestionText = "";
         await this.loadQuestions();
@@ -879,16 +933,10 @@ export default {
       }
     },
 
-    closeQuestionsModal(event) {
-      if (event && event.target.classList.contains("questions-modal-overlay")) {
-        this.questionsModalVisible = false;
-        this.selectedProject = null;
-        this.questions = [];
-      } else if (!event) {
-        this.questionsModalVisible = false;
-        this.selectedProject = null;
-        this.questions = [];
-      }
+    closeQuestionsModal() {
+      this.questionsModalVisible = false;
+      this.selectedProject = null;
+      this.questions = [];
     },
 
     async startRecording() {
@@ -944,6 +992,7 @@ export default {
       this.audioUrl = null;
       this.audioChunks = [];
       this.uploadStatus = "";
+      this.clearLocalAudio();
     },
 
     async uploadAudio() {
@@ -984,14 +1033,9 @@ export default {
       this.loadCommissionMembers();
     },
 
-    closeGradingModal(event) {
-      if (event && event.target.classList.contains("modal-overlay")) {
-        this.gradingModalVisible = false;
-        this.generationStatus = "";
-      } else if (!event) {
-        this.gradingModalVisible = false;
-        this.generationStatus = "";
-      }
+    closeGradingModal() {
+      this.gradingModalVisible = false;
+      this.generationStatus = "";
     },
 
     async loadAllStudents() {
@@ -1078,173 +1122,14 @@ export default {
       }
     },
 
-    async generateProtocol(student, format) {
-      try {
-        alert(
-          `Генерация протокола для ${student.Surname} ${student.Name} в формате ${format}`
-        );
-      } catch (error) {
-        console.error("Ошибка генерации протокола:", error);
-        this.generationStatus = "Ошибка при генерации протокола";
-      }
-    },
-
-    async generateAllProtocols() {
-      if (!this.canGenerateProtocols) {
-        alert("Не все студенты имеют оценки");
-        return;
-      }
-
-      if (
-        !confirm(
-          "Вы уверены, что хотите сформировать протоколы? Это действие также распределит вопросы между студентами."
-        )
-      ) {
-        return;
-      }
-
-      try {
-        this.generatingProtocols = true;
-        this.generationStatus = "Распределение вопросов...";
-
-        for (const project of this.projects) {
-          await this.distributeQuestions(project.ID);
-        }
-
-        this.generationStatus = "Формирование протоколов...";
-
-        const updatePromises = this.allStudents.map((student) => {
-          if (student.protocolId) {
-            return axios.patch(
-              `http://localhost:8000/api/protocols/${student.protocolId}/`,
-              {
-                Status: false,
-              }
-            );
-          }
-        });
-
-        await Promise.all(updatePromises.filter(Boolean));
-
-        this.generationStatus =
-          "Все протоколы успешно сформированы и вопросы распределены!";
-
-        setTimeout(() => {
-          this.closeGradingModal();
-        }, 2000);
-      } catch (error) {
-        console.error("Ошибка формирования протоколов:", error);
-        this.generationStatus = "Ошибка при формировании протоколов";
-      } finally {
-        this.generatingProtocols = false;
-      }
-    },
-
-    async distributeQuestions(projectId) {
-      try {
-        const questionsResponse = await axios.get(
-          "http://localhost:8000/api/questions/",
-          {
-            params: { ID_Project: projectId },
-          }
-        );
-        const questions = questionsResponse.data;
-
-        const studentsResponse = await axios.get(
-          "http://localhost:8000/api/students/",
-          {
-            params: { ID_Project: projectId },
-          }
-        );
-        const students = studentsResponse.data;
-
-        if (questions.length === 0 || students.length === 0) {
-          console.log(
-            `Проект ${projectId}: нет вопросов или студентов для распределения`
-          );
-          return;
-        }
-
-        const shuffledQuestions = [...questions].sort(
-          () => Math.random() - 0.5
-        );
-
-        const questionAssignments = [];
-        let questionIndex = 0;
-
-        for (
-          let i = 0;
-          i < students.length && questionIndex < shuffledQuestions.length;
-          i++
-        ) {
-          const student = students[i];
-          const question = shuffledQuestions[questionIndex];
-
-          questionAssignments.push({
-            studentId: student.ID,
-            question1Id: question.ID,
-            question2Id: null,
-          });
-
-          questionIndex++;
-        }
-
-        let studentIndex = 0;
-        while (
-          questionIndex < shuffledQuestions.length &&
-          studentIndex < students.length
-        ) {
-          const question = shuffledQuestions[questionIndex];
-
-          if (questionAssignments[studentIndex]) {
-            questionAssignments[studentIndex].question2Id = question.ID;
-          }
-
-          questionIndex++;
-          studentIndex++;
-        }
-
-        for (const assignment of questionAssignments) {
-          const protocolResponse = await axios.get(
-            "http://localhost:8000/api/protocols/",
-            {
-              params: {
-                ID_Student: assignment.studentId,
-                ID_DefenseSchedule: this.activeFilters.scheduleId,
-              },
-            }
-          );
-
-          if (protocolResponse.data && protocolResponse.data.length > 0) {
-            const protocol = protocolResponse.data[0];
-
-            const updateData = {};
-            if (assignment.question1Id) {
-              updateData.ID_Question = assignment.question1Id;
-            }
-            if (assignment.question2Id) {
-              updateData.ID_Question2 = assignment.question2Id;
-            }
-
-            if (Object.keys(updateData).length > 0) {
-              await axios.patch(
-                `http://localhost:8000/api/protocols/${protocol.ID}/`,
-                updateData
-              );
-            }
-          }
-        }
-
-        console.log(
-          `Проект ${projectId}: распределено ${questionIndex} вопросов между ${students.length} студентами`
-        );
-      } catch (error) {
-        console.error(
-          `Ошибка распределения вопросов для проекта ${projectId}:`,
-          error
-        );
-        throw error;
-      }
+    goToProjectFilter() {
+      this.showProjects = false;
+      this.activeFilters = null;
+      this.projects = [];
+      this.students = {};
+      this.allStudents = [];
+      this.closeGradingModal();
+      sessionStorage.removeItem("projectFilterParams");
     },
 
     async saveGrade(student) {
@@ -1302,7 +1187,6 @@ export default {
       if (!dateTimeStr) return "";
 
       let date;
-
       if (dateTimeStr.includes("T")) {
         const cleanDateStr = dateTimeStr.replace("Z", "");
         date = new Date(cleanDateStr);
@@ -1370,19 +1254,20 @@ export default {
           "http://localhost:8000/api/projects/",
           {
             params: {
-              ID_DefenseSchedule: this.activeFilters.scheduleId,
+              defense_schedule_id: this.activeFilters.scheduleId,
             },
           }
         );
 
-        response.data.forEach((updatedProject) => {
+        for (const updatedProject of response.data) {
           const existingProject = this.projects.find(
             (p) => p.ID === updatedProject.ID
           );
           if (existingProject) {
             Object.assign(existingProject, updatedProject);
+            await this.loadProjectDefenseTimes(existingProject);
           }
-        });
+        }
       } catch (error) {
         console.error("Ошибка обновления данных проектов:", error);
       }
@@ -1397,6 +1282,55 @@ export default {
         Готов: "status-ready",
       };
       return statusMap[status] || "status-unknown";
+    },
+
+    async loadProjectDefenseTimes(project) {
+      try {
+        const studentsResponse = await axios.get(
+          "http://localhost:8000/api/students/",
+          {
+            params: { ID_Project: project.ID },
+          }
+        );
+
+        const students = studentsResponse.data;
+
+        if (students.length > 0) {
+          const firstStudent = students[0];
+
+          try {
+            const protocolResponse = await axios.get(
+              "http://127.0.0.1:8000/api/protocols/",
+              {
+                params: {
+                  ID_Student: firstStudent.ID,
+                },
+              }
+            );
+
+            if (protocolResponse.data && protocolResponse.data.length > 0) {
+              const protocol = protocolResponse.data[0];
+
+              if (protocol.DefenseStartTime) {
+                project.DefenseStartTime = protocol.DefenseStartTime;
+              }
+              if (protocol.DefenseEndTime) {
+                project.DefenseEndTime = protocol.DefenseEndTime;
+              }
+            }
+          } catch (protocolError) {
+            console.error(
+              `Ошибка загрузки протокола для студента ${firstStudent.ID}:`,
+              protocolError
+            );
+          }
+        }
+      } catch (error) {
+        console.error(
+          `Ошибка загрузки времени защиты для проекта ${project.ID}:`,
+          error
+        );
+      }
     },
 
     getProjectStatusIcon(status) {
@@ -1424,13 +1358,16 @@ export default {
         return `${hours}:${minutes}`;
       }
 
+      if (typeof timeStr === "string" && timeStr.match(/^\d{2}:\d{2}$/)) {
+        return timeStr;
+      }
+
       try {
         const date = new Date(timeStr);
         if (!isNaN(date.getTime())) {
-          return date.toLocaleTimeString("ru-RU", {
-            hour: "2-digit",
-            minute: "2-digit",
-          });
+          const hours = date.getHours().toString().padStart(2, "0");
+          const minutes = date.getMinutes().toString().padStart(2, "0");
+          return `${hours}:${minutes}`;
         }
       } catch (error) {
         console.error("Ошибка форматирования времени:", error);
@@ -1484,11 +1421,15 @@ export default {
         return `${hours}:${minutes}`;
       }
 
+      if (typeof timeStr === "string" && timeStr.match(/^\d{2}:\d{2}$/)) {
+        return timeStr;
+      }
+
       try {
         const date = new Date(timeStr);
         if (!isNaN(date.getTime())) {
-          const hours = String(date.getHours()).padStart(2, "0");
-          const minutes = String(date.getMinutes()).padStart(2, "0");
+          const hours = date.getHours().toString().padStart(2, "0");
+          const minutes = date.getMinutes().toString().padStart(2, "0");
           return `${hours}:${minutes}`;
         }
       } catch (error) {
@@ -1534,6 +1475,24 @@ export default {
         );
       }
     },
+
+    handleLocalAudioUpload(event) {
+      const file = event.target.files[0];
+      if (file && file.type.startsWith("audio/")) {
+        this.localAudioFile = file;
+        this.audioBlob = file;
+        this.audioUrl = URL.createObjectURL(file);
+      } else {
+        alert("Пожалуйста, выберите аудиофайл");
+      }
+    },
+
+    clearLocalAudio() {
+      this.localAudioFile = null;
+      if (this.$refs.localAudioInput) {
+        this.$refs.localAudioInput.value = "";
+      }
+    },
   },
 };
 </script>
@@ -1544,6 +1503,8 @@ export default {
   height: 100%;
   display: flex;
   flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+    Helvetica, Arial, sans-serif;
 }
 
 .project-defense-wrapper {
@@ -1697,10 +1658,6 @@ h5 {
   top: 0;
   z-index: 1;
   color: #1e293b;
-}
-
-.projects-table th:nth-child(4) {
-  min-width: 300px;
 }
 
 .clickable-row {
@@ -2405,6 +2362,18 @@ h5 {
   font-style: italic;
 }
 
+.filter-button {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.filter-button:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+  transform: translateY(-2px);
+}
+
 @media (max-width: 768px) {
   .project-defense {
     padding: 0.75rem;
@@ -2620,5 +2589,20 @@ h5 {
 
 .ok-button:hover:not(:disabled) {
   background-color: #059669;
+}
+
+.audio-controls {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.local-upload-button {
+  background-color: #6366f1;
+}
+
+.local-upload-button:hover {
+  background-color: #4f46e5;
 }
 </style>

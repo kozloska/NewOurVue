@@ -34,21 +34,15 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: "/generateprotocols",
-    name: "GenerateProtocols",
-    component: () => import("../components/GenerateProtocols.vue"),
-    meta: { requiresAuth: true },
-  },
-  {
     path: "/uploadschedule",
     name: "UploadSchedule",
     component: () => import("../components/UploadSchedule.vue"),
     meta: { requiresAuth: true },
   },
   {
-    path: "/archive",
-    name: "Archive",
-    component: () => import("../components/Archive.vue"),
+    path: "/archiveprotocols",
+    name: "ArchiveProtocols",
+    component: () => import("../components/ArchiveProtocols.vue"),
     meta: { requiresAuth: true },
   },
   {
@@ -70,13 +64,16 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: "/projects/:projectId/questions",
-    name: "ProjectQuestions",
-    component: () => import("../components/ProjectQuestions.vue"),
-    props: true,
+    path: "/generateprotocols",
+    name: "GenerateProtocols",
+    component: () => import("../components/GenerateProtocols.vue"),
+  },
+  {
+    path: "/management",
+    name: "ManagementPanel",
+    component: () => import("../components/ManagementPanel.vue"),
     meta: { requiresAuth: true },
   },
-
   { path: "/:catchAll(.*)", redirect: "/" },
 ];
 

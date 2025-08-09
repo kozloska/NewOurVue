@@ -11,6 +11,8 @@
     "axios": "^1.9.0",
     "core-js": "^3.8.3",
     "docxtemplater": "^3.63.0",
+    "jszip": "^3.10.1",
+    "lucide-vue-next": "^0.518.0",
     "pizzip": "^3.2.0",
     "vue": "^3.2.13",
     "vue-router": "^4.0.3",

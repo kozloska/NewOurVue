@@ -1,7 +1,7 @@
 <template>
   <div class="protocol-list-container">
     <div class="protocol-list-header">
-      <h2>Список протоколов</h2>
+      <h2>Утверждение протоколов</h2>
       <div class="header-actions">
         <div class="search-container">
           <input
@@ -80,7 +80,7 @@
         </thead>
         <tbody>
           <tr
-            v-for="protocol in protocols"
+            v-for="(protocol, index) in protocols"
             :key="protocol.ID"
             class="protocol-row"
             :class="{ 'selected-row': selectedProtocols.includes(protocol.ID) }"
@@ -94,7 +94,7 @@
                 :disabled="protocol.Status"
               />
             </td>
-            <td>{{ protocol.Number }}</td>
+            <td>{{ index + 1 }}</td>
             <td>
               <div class="student-info">
                 <div class="student-name">
@@ -344,7 +344,11 @@ export default {
           }
         );
 
-        const newProtocols = response.data.results || response.data;
+        let newProtocols = response.data.results || response.data;
+
+        newProtocols = newProtocols.filter(
+          (protocol) => protocol.Grade !== "Пересдача"
+        );
 
         if (reset) {
           this.protocols = newProtocols;
@@ -467,9 +471,6 @@ export default {
 
       const dateTime = this.formatDateTime(defenseSchedule?.DateTime);
 
-      console.log("Полная структура комиссии:", commission);
-      console.log("ID комиссии:", commission?.ID);
-
       let commissionMembers = [];
       let chairman = null;
       let secretary = null;
@@ -504,11 +505,10 @@ export default {
         secretary = commissionMembers.find((m) => m.Role === "Секретарь");
 
         members = commissionMembers.filter(
-          (m) => m.Role === "Член аттестационной комиссии"
+          (m) =>
+            m.Role === "Член аттестационной комиссии" ||
+            m.Role === "Член аттестационной комиссии " 
         );
-
-        console.log("Найдено членов аттестационной комиссии:", members.length);
-        console.log("Члены комиссии:", members);
       }
 
       let question1 = " ";
@@ -575,8 +575,6 @@ export default {
         number: protocol.Number || "Не указан",
         members: membersForSignatures,
       };
-
-      console.log("Подготовленные данные для шаблона:", templateData);
       return templateData;
     },
 
@@ -646,7 +644,7 @@ export default {
 
     getGradeClass(grade) {
       const gradeMap = {
-        5: "Отлично-excellent",
+        5: "Отлично",
         Отлично: "Отлично",
         4: "Хорошо",
         Хорошо: "Хорошо",
@@ -697,6 +695,8 @@ export default {
   padding: 1.5rem;
   max-width: 100%;
   margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+    Helvetica, Arial, sans-serif;
 }
 
 .protocol-list-header {

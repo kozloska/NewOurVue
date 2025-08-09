@@ -25,21 +25,13 @@
         </router-link>
 
         <router-link
+          v-if="isAdmin"
           to="/formcommission"
           class="menu-item"
           active-class="active"
         >
           <span class="menu-icon">👥</span>
           <span class="menu-text">Сформировать комиссию</span>
-        </router-link>
-
-        <router-link
-          to="/generateprotocols"
-          class="menu-item"
-          active-class="active"
-        >
-          <span class="menu-icon">📝</span>
-          <span class="menu-text">Сформировать протоколы</span>
         </router-link>
 
         <router-link
@@ -52,6 +44,15 @@
         </router-link>
 
         <router-link
+          to="/generateprotocols"
+          class="menu-item"
+          active-class="active"
+        >
+          <span class="menu-icon">📝</span>
+          <span class="menu-text">Сформировать протоколы</span>
+        </router-link>
+
+        <router-link
           to="/projectschedule"
           class="menu-item"
           active-class="active"
@@ -60,14 +61,28 @@
           <span class="menu-text">Расписание проектов</span>
         </router-link>
 
-        <router-link to="/protocollist" class="menu-item" active-class="active">
+        <!-- <router-link to="/protocollist" class="menu-item" active-class="active">
           <span class="menu-icon">📋</span>
-          <span class="menu-text">Список протоколов</span>
-        </router-link>
+          <span class="menu-text">Утверждение протоколов</span>
+        </router-link> -->
 
-        <router-link to="/archive" class="menu-item" active-class="active">
+        <router-link
+          to="/archiveprotocols"
+          class="menu-item"
+          active-class="active"
+        >
           <span class="menu-icon">🗄️</span>
           <span class="menu-text">Архив протоколов</span>
+        </router-link>
+
+        <router-link
+          v-if="isAdmin"
+          to="/management"
+          class="menu-item"
+          active-class="active"
+        >
+          <span class="menu-icon">⚙️</span>
+          <span class="menu-text">Управление</span>
         </router-link>
       </nav>
       <button @click="logout" class="logout-btn">
@@ -79,6 +94,8 @@
     <main :class="['content', { 'full-width': !isAuthenticated }]">
       <router-view></router-view>
     </main>
+    <NotificationSystem />
+    <ConfirmDialog ref="confirmDialog" />
   </div>
 </template>
 
@@ -93,6 +110,10 @@ export default {
       const secretary = JSON.parse(localStorage.getItem("secretary"));
       if (!secretary) return "";
       return `${secretary.Surname} ${secretary.Name} ${secretary.Patronymic}`;
+    },
+    isAdmin() {
+      const secretary = JSON.parse(localStorage.getItem("secretary"));
+      return secretary && secretary.ID === 2;
     },
   },
   methods: {
@@ -113,6 +134,8 @@ export default {
   background-color: #f8fafc;
   margin: 0;
   padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue",
+    Helvetica, Arial, sans-serif;
 }
 
 .sidebar {
