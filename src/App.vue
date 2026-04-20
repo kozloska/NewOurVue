@@ -113,7 +113,7 @@ export default {
     },
     isAdmin() {
       const secretary = JSON.parse(localStorage.getItem("secretary"));
-      return secretary && secretary.ID === 2;
+      return secretary && secretary.ID === 1;
     },
   },
   methods: {

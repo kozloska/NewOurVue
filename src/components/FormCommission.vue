@@ -73,7 +73,7 @@
                   Выберите председателя
                 </option>
                 <option
-                  v-for="member in availableChairmanMembers"
+                  v-for="member in availableForChairman"
                   :key="member.ID"
                   :value="member.ID"
                 >
@@ -111,6 +111,28 @@
           </div>
           <div class="card-content">
             <div class="members-list">
+              <!-- Секретарь -->
+              <div class="member-item">
+                <div class="form-group member-select">
+                  <label>Секретарь:</label>
+                  <div class="select-with-action">
+                    <select v-model="selectedSecretary" class="form-select">
+                      <option value="" disabled selected>
+                        Выберите секретаря
+                      </option>
+                      <option
+                        v-for="member in availableForSecretary"
+                        :key="member.ID"
+                        :value="member.ID"
+                      >
+                        {{ fullName(member) }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Члены комиссии -->
               <div
                 v-for="(memberId, index) in selectedMembers"
                 :key="`member-${index}`"
@@ -173,18 +195,17 @@ export default {
       loadingSpecializations: false,
       commissionName: "",
       selectedChairman: "",
+      selectedSecretary: "",
       selectedMembers: ["", "", ""],
 
       commissionMembersList: [],
       creating: false,
       successMessage: "",
       errorMessage: "",
-      secretaryId: null,
     };
   },
   async mounted() {
     await this.loadData();
-    this.initializeSecretary();
   },
   computed: {
     canSubmit() {
@@ -192,35 +213,46 @@ export default {
         this.selectedSpecialization &&
         this.commissionName.trim() &&
         this.selectedChairman &&
+        this.selectedSecretary &&
         this.selectedMembers.some((id) => id)
       );
     },
 
-    availableChairmanMembers() {
-      const usedIds = this.selectedMembers.filter((id) => id);
+    // Доступные для председателя (исключаем секретаря и членов)
+    availableForChairman() {
+      const usedIds = [
+        this.selectedSecretary,
+        ...this.selectedMembers.filter((id) => id),
+      ].filter((id) => id);
+
       return this.commissionMembersList.filter(
-        (m) => !usedIds.includes(m.ID) && m.ID !== this.secretaryId
+        (member) => !usedIds.includes(member.ID)
+      );
+    },
+
+    // Доступные для секретаря (исключаем председателя и членов)
+    availableForSecretary() {
+      const usedIds = [
+        this.selectedChairman,
+        ...this.selectedMembers.filter((id) => id),
+      ].filter((id) => id);
+
+      return this.commissionMembersList.filter(
+        (member) => !usedIds.includes(member.ID)
       );
     },
   },
   methods: {
-    initializeSecretary() {
-      const secretary = JSON.parse(localStorage.getItem("secretary"));
-      if (secretary?.ID) {
-        this.secretaryId = secretary.ID;
-        console.log("ID секретаря:", this.secretaryId);
-        console.log("Данные секретаря:", secretary);
-      } else {
-        this.errorMessage =
-          "ID секретаря не найден. Пожалуйста, войдите в систему заново.";
-      }
-    },
-
     async loadData() {
       try {
         this.loadingSpecializations = true;
         const specializationsRes = await axios.get(
-          "http://localhost:8000/api/specializations/"
+          "http://localhost:8000/api/specializations/",
+          {
+            params: {
+              Status: true,
+            },
+          }
         );
         this.specializations = specializationsRes.data;
 
@@ -240,16 +272,16 @@ export default {
       return `${member.Surname} ${member.Name} ${member.Patronymic}`;
     },
 
+    // Доступные для члена комиссии по индексу (исключаем председателя, секретаря и других членов)
     getAvailableMembersForIndex(index) {
       const usedIds = [
         this.selectedChairman,
-        ...this.selectedMembers.filter(
-          (_, i) => i !== index && this.selectedMembers[i]
-        ),
+        this.selectedSecretary,
+        ...this.selectedMembers.filter((id, i) => i !== index && id),
       ].filter((id) => id);
 
       return this.commissionMembersList.filter(
-        (m) => !usedIds.includes(m.ID) && m.ID !== this.secretaryId
+        (member) => !usedIds.includes(member.ID)
       );
     },
 
@@ -260,32 +292,27 @@ export default {
     removeMember(index) {
       if (this.selectedMembers.length > 1) {
         this.selectedMembers.splice(index, 1);
+      } else {
+        this.selectedMembers[index] = "";
       }
     },
-
     async createCommission() {
       if (!this.canSubmit) {
         this.errorMessage = "Заполните все обязательные поля";
         return;
       }
 
-      if (!this.secretaryId) {
-        this.errorMessage = "ID секретаря не найден";
-        return;
-      }
+      // Проверка на дубликаты
+      const allIds = [
+        this.selectedChairman,
+        this.selectedSecretary,
+        ...this.selectedMembers.filter((id) => id),
+      ].filter((id) => id);
 
-      if (!this.selectedSpecialization) {
-        this.errorMessage = "Выберите специализацию";
-        return;
-      }
-
-      if (this.selectedChairman === this.secretaryId) {
-        this.errorMessage = "Секретарь не может быть председателем комиссии";
-        return;
-      }
-
-      if (this.selectedMembers.includes(this.secretaryId)) {
-        this.errorMessage = "Секретарь не может быть членом комиссии";
+      const uniqueIds = new Set(allIds);
+      if (allIds.length !== uniqueIds.size) {
+        this.errorMessage =
+          "Один сотрудник не может занимать несколько ролей в комиссии";
         return;
       }
 
@@ -294,6 +321,7 @@ export default {
         this.errorMessage = "";
         this.successMessage = "";
 
+        // 1. Создаём комиссию
         const commissionData = {
           Name: this.commissionName.trim(),
           ID_Specialization: parseInt(this.selectedSpecialization),
@@ -311,22 +339,25 @@ export default {
           }
         );
 
-        console.log(
-          "Ответ сервера при создании комиссии:",
-          commissionResponse.data
-        );
         const commissionId = commissionResponse.data.ID;
+        console.log("Комиссия создана, ID:", commissionId);
 
-        console.log("Добавляем председателя:", this.selectedChairman);
+        // 2. Добавляем председателя (НЕ передаём поле ID!)
         await axios.post("http://localhost:8000/api/commission_compositions/", {
           ID_Commission: commissionId,
           ID_Member: parseInt(this.selectedChairman),
           Role: "Председатель",
         });
 
-        const validMembers = this.selectedMembers.filter((id) => id);
-        console.log("Добавляем членов комиссии:", validMembers);
+        // 3. Добавляем секретаря (НЕ передаём поле ID!)
+        await axios.post("http://localhost:8000/api/commission_compositions/", {
+          ID_Commission: commissionId,
+          ID_Member: parseInt(this.selectedSecretary),
+          Role: "Секретарь",
+        });
 
+        // 4. Добавляем членов комиссии (НЕ передаём поле ID!)
+        const validMembers = this.selectedMembers.filter((id) => id);
         for (const memberId of validMembers) {
           await axios.post(
             "http://localhost:8000/api/commission_compositions/",
@@ -338,33 +369,34 @@ export default {
           );
         }
 
-        console.log("Добавляем секретаря:", this.secretaryId);
-        await axios.post("http://localhost:8000/api/commission_compositions/", {
-          ID_Commission: commissionId,
-          ID_Member: parseInt(this.secretaryId),
-          Role: "Секретарь",
-        });
+        // 5. Привязываем секретаря к специализации (SecretarySpecialization)
+        await axios.post(
+          "http://localhost:8000/api/secretary_specialization/",
+          {
+            ID_Specialization: parseInt(this.selectedSpecialization),
+            ID_Secretary: parseInt(this.selectedSecretary),
+          }
+        );
 
         this.successMessage = `Комиссия "${this.commissionName}" успешно сформирована!`;
         this.resetForm();
       } catch (error) {
         console.error("Ошибка создания комиссии:", error);
         console.error("Детали ошибки:", error.response?.data);
-        console.error("Статус ошибки:", error.response?.status);
 
         let errorMsg = "Ошибка при создании комиссии: ";
 
         if (error.response?.data) {
           if (typeof error.response.data === "string") {
             errorMsg += error.response.data;
-          } else if (error.response.data.Name) {
-            errorMsg += `Название: ${error.response.data.Name[0]}`;
-          } else if (error.response.data.ID_Specialization) {
-            errorMsg += `Специализация: ${error.response.data.ID_Specialization[0]}`;
           } else if (error.response.data.message) {
             errorMsg += error.response.data.message;
           } else if (error.response.data.detail) {
             errorMsg += error.response.data.detail;
+          } else if (error.response.data.ID_Member) {
+            errorMsg += `Член комиссии: ${error.response.data.ID_Member[0]}`;
+          } else if (error.response.data.ID_Commission) {
+            errorMsg += `Комиссия: ${error.response.data.ID_Commission[0]}`;
           } else {
             errorMsg += JSON.stringify(error.response.data);
           }
@@ -382,6 +414,7 @@ export default {
       this.selectedSpecialization = "";
       this.commissionName = "";
       this.selectedChairman = "";
+      this.selectedSecretary = "";
       this.selectedMembers = ["", "", ""];
     },
   },

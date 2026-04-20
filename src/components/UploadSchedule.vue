@@ -2,7 +2,31 @@
   <div class="upload-schedule">
     <h2>Загрузка расписания защит</h2>
 
+    <div class="specialization-selector">
+      <label for="specialization-select" class="selector-label">
+        Выберите направление подготовки:
+      </label>
+      <select
+        id="specialization-select"
+        v-model="selectedSpecialization"
+        class="specialization-select"
+        :disabled="loadingSpecializations"
+      >
+        <option value="" disabled>
+          {{ loadingSpecializations ? "Загрузка..." : "Выберите направление" }}
+        </option>
+        <option
+          v-for="specialization in specializations"
+          :key="specialization.ID"
+          :value="specialization.ID"
+        >
+          {{ specialization.Name }}
+        </option>
+      </select>
+    </div>
+
     <div
+      v-if="selectedSpecialization"
       class="upload-container"
       @dragover.prevent="dragOver = true"
       @dragleave="dragOver = false"
@@ -70,7 +94,7 @@
     <div v-if="successMessage" class="alert success">
       <div class="alert-icon">✅</div>
       <div class="alert-content">
-        <strong>Успех:</strong>
+        <strong>Успешно:</strong>
         <p>{{ successMessage }}</p>
         <div v-if="uploadResults" class="upload-results">
           <ul>
@@ -89,17 +113,16 @@
     <div class="instructions">
       <h3>Инструкции по загрузке расписания:</h3>
       <ol>
+        <li>Выберите направление подготовки из списка</li>
         <li>Подготовьте Excel-файл с расписанием защит</li>
-        <li>Файл должен содержать листы с названиями направлений подготовки</li>
         <li>
-          Каждый лист должен содержать:
+          Файл должен содержать листы с данными по расписанию:
           <ul>
-            <li><strong>Первая строка</strong> - название специальности</li>
             <li><strong>Даты</strong> - в формате "ДД.ММ.ГГГГ - описание"</li>
             <li><strong>Время</strong> - в формате "ЧЧ:ММ-ЧЧ:ММ"</li>
             <li>
-              <strong>Таблицу</strong> с колонками: время, Аудитория, группа,
-              тема проекта
+              <strong>Таблицу</strong> с колонками: Время, Аудитория, Группа,
+              Тема проекта
             </li>
           </ul>
         </li>
@@ -111,7 +134,7 @@
         <div>
           <strong>Внимание:</strong> Загрузка расписания обновит существующие
           протоколы студентов, привязав их к новым слотам защиты. Убедитесь, что
-          данные в файле корректны.
+          данные в файле корректны и выбрано правильное направление.
         </div>
       </div>
     </div>
@@ -125,6 +148,9 @@ export default {
   name: "UploadSchedule",
   data() {
     return {
+      specializations: [],
+      selectedSpecialization: "",
+      loadingSpecializations: false,
       dragOver: false,
       selectedFile: null,
       uploading: false,
@@ -134,7 +160,31 @@ export default {
       uploadResults: null,
     };
   },
+  mounted() {
+    this.loadSpecializations();
+  },
   methods: {
+    async loadSpecializations() {
+      this.loadingSpecializations = true;
+      try {
+        const response = await axios.get(
+          "http://localhost:8000/api/specializations/",
+          {
+            params: {
+              Status: true,
+            },
+          }
+        );
+        this.specializations = response.data;
+      } catch (error) {
+        this.errorMessage =
+          "Ошибка загрузки направлений: " +
+          (error.response?.data?.message || error.message);
+      } finally {
+        this.loadingSpecializations = false;
+      }
+    },
+
     handleFileSelect(e) {
       const files = e.target.files || e.dataTransfer.files;
       if (files.length) {
@@ -172,13 +222,17 @@ export default {
     },
 
     async uploadFile() {
-      if (!this.selectedFile) {
-        this.errorMessage = "Выберите файл для загрузки";
+      // ✅ Проверка: выбрано ли направление и файл
+      if (!this.selectedFile || !this.selectedSpecialization) {
+        this.errorMessage =
+          "Выберите направление подготовки и файл для загрузки";
         return;
       }
 
       const formData = new FormData();
       formData.append("file", this.selectedFile);
+      // ✅ Передаём ID специальности на сервер
+      formData.append("specialization_id", this.selectedSpecialization);
 
       try {
         this.uploading = true;
@@ -277,6 +331,43 @@ h2 {
   font-size: 1.8rem;
   font-weight: 700;
 }
+
+/* === Стили для селекта специальностей === */
+
+.specialization-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.selector-label {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 20px;
+}
+
+.specialization-select {
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  background-color: white;
+  color: #1e293b;
+  transition: border-color 0.2s;
+}
+
+.specialization-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.specialization-select:disabled {
+  background-color: #f8fafc;
+  color: #64748b;
+  cursor: not-allowed;
+}
+/* ========================================= */
 
 .upload-container {
   margin: 20px 0;

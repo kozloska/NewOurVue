@@ -507,7 +507,7 @@ export default {
         members = commissionMembers.filter(
           (m) =>
             m.Role === "Член аттестационной комиссии" ||
-            m.Role === "Член аттестационной комиссии " 
+            m.Role === "Член аттестационной комиссии "
         );
       }
 

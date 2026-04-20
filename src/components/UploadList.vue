@@ -94,7 +94,7 @@
     <div v-if="successMessage" class="alert success">
       <div class="alert-icon">✅</div>
       <div class="alert-content">
-        <strong>Успех:</strong>
+        <strong>Успешно:</strong>
         <p>{{ successMessage }}</p>
         <div v-if="uploadResults" class="upload-results">
           <ul>
@@ -129,8 +129,15 @@
             <li><strong>ФИО</strong> - Фамилия Имя Отчество студента</li>
             <li><strong>Группа</strong> - Название группы</li>
             <li><strong>Тема проекта</strong> - Название проекта</li>
-            <li><strong>Преподаватель</strong> - ФИО руководителя</li>
+            <li>
+              <strong>Преподаватель или Руководитель</strong> - ФИО руководителя
+              (допускается любое из двух названий колонки)
+            </li>
           </ul>
+        </li>
+        <li>
+          Студенты, у которых в теме проекта содержится слово "Отчислен",
+          автоматически пропускаются при загрузке и не добавляются в систему
         </li>
         <li>
           Загрузите файл, перетащив его в область загрузки или выбрав через
@@ -169,7 +176,12 @@ export default {
       this.loadingSpecializations = true;
       try {
         const response = await axios.get(
-          "http://localhost:8000/api/specializations/"
+          "http://localhost:8000/api/specializations/",
+          {
+            params: {
+              Status: true, // DjangoFilterBackend отфильтрует записи на сервере
+            },
+          }
         );
         this.specializations = response.data;
       } catch (error) {
