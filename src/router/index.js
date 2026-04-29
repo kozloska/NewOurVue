@@ -2,6 +2,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import LoginView from "../views/LoginView.vue";
 import ProfileView from "../views/ProfileView.vue";
+import authService from "@/services/auth";
 
 const routes = [
   {
@@ -81,12 +82,27 @@ const router = createRouter({
   history: createWebHistory(),
   routes,
 });
+router.beforeEach(async (to, from, next) => {
+  const requiresAuth = to.meta.requiresAuth;
 
-router.beforeEach((to, from, next) => {
-  const secretary = JSON.parse(localStorage.getItem("secretary"));
-  if (to.meta.requiresAuth && !secretary) {
-    next("/");
+  if (requiresAuth) {
+    if (!authService.isAuthenticated()) {
+      next("/");
+      return;
+    }
+
+    try {
+      await authService.getCurrentUser(); // проверяем сессию на сервере
+      next();
+    } catch (error) {
+      next("/");
+    }
   } else {
+    // Если идём на логин, но уже авторизованы — отправляем на homepage
+    if (authService.isAuthenticated() && to.path === "/") {
+      next("/homepage");
+      return;
+    }
     next();
   }
 });

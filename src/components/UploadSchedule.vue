@@ -173,6 +173,7 @@ export default {
             params: {
               Status: true,
             },
+            withCredentials: true,
           }
         );
         this.specializations = response.data;

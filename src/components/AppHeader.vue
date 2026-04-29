@@ -1,13 +1,14 @@
 <template>
-  <div v-if="secretary" class="header">
+  <div v-if="user" class="header">
     <span class="user-info">
       <div class="user-icon" @click="showLogoutConfirm">👤</div>
       <span class="user-name">{{ fullName }}</span>
     </span>
+
     <div v-if="showConfirm" class="modal">
       <div class="modal-content">
         <p>Вы уверены, что хотите выйти?</p>
-        <button @click="logout">Да</button>
+        <button @click="performLogout">Да</button>
         <button @click="cancelLogout">Нет</button>
       </div>
     </div>
@@ -15,30 +16,44 @@
 </template>
 
 <script>
+import authService from "@/services/auth";
+
 export default {
   data() {
     return {
-      secretary: JSON.parse(localStorage.getItem("secretary")) || null,
+      user: null,
       fullName: "",
       showConfirm: false,
     };
   },
+
   created() {
-    if (this.secretary) {
-      this.fullName = `${this.secretary.Surname} ${this.secretary.Name} ${this.secretary.Patronymic}`;
-    }
+    this.loadUser();
+    window.addEventListener("authChanged", this.loadUser);
   },
+
+  beforeUnmount() {
+    window.removeEventListener("authChanged", this.loadUser);
+  },
+
   methods: {
-    showLogoutConfirm() {
-      this.showConfirm = true;
+    loadUser() {
+      this.user = authService.getUser();
+      if (this.user) {
+        this.fullName = `${this.user.Surname || ""} ${this.user.Name || ""} ${
+          this.user.Patronymic || ""
+        }`.trim();
+      } else {
+        this.fullName = "";
+      }
     },
-    logout() {
-      localStorage.removeItem("secretary");
-      this.secretary = null;
-      this.fullName = "";
+
+    async performLogout() {
+      await authService.logout();
       this.showConfirm = false;
-      this.$router.push("/");
+      this.$router.replace("/");
     },
+
     cancelLogout() {
       this.showConfirm = false;
     },

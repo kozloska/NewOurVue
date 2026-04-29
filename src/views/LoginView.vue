@@ -1,167 +1,80 @@
 <template>
   <div class="login-container">
     <div class="login-card">
-      <!-- Заголовок -->
       <div class="login-header">
-        <div class="logo-container">
-          <div class="logo">🎓</div>
-          <h1 class="app-title">Вход в систему</h1>
-          <p class="app-subtitle">Система защиты проектов ИРНИТУ</p>
-        </div>
+        <div class="logo">🎓</div>
+        <h1 class="app-title">Вход в систему</h1>
+        <p class="app-subtitle">Система защиты проектов ИРНИТУ</p>
       </div>
 
-      <!-- Форма входа -->
-      <div v-if="!isLoading && !success" class="login-form">
-        <div class="input-group">
-          <label for="login">Логин</label>
-          <input
-            type="text"
-            id="login"
-            v-model="form.login"
-            placeholder="Введите ваш логин"
-            @keyup.enter="handleLogin"
-            :disabled="isLoading"
-          />
-        </div>
+      <div v-if="errorMessage" class="error-message">⚠️ {{ errorMessage }}</div>
 
-        <div class="input-group">
-          <label for="password">Пароль</label>
-          <input
-            type="password"
-            id="password"
-            v-model="form.password"
-            placeholder="Введите пароль"
-            @keyup.enter="handleLogin"
-            :disabled="isLoading"
-          />
-        </div>
-
-        <div v-if="errorMessage" class="error-message">
-          ⚠️ {{ errorMessage }}
-        </div>
-
-        <button
-          class="login-button"
-          @click="handleLogin"
-          :disabled="isLoading || !form.login || !form.password"
-        >
-          <span v-if="isLoading" class="spinner-small"></span>
-          <span v-else>Войти</span>
-        </button>
+      <div class="input-group">
+        <label>Логин</label>
+        <input
+          v-model="form.login"
+          type="text"
+          @keyup.enter="handleLogin"
+          :disabled="isLoading"
+        />
       </div>
 
-      <!-- Состояние загрузки -->
-      <div v-if="isLoading" class="status-container processing">
-        <div class="spinner-large">
-          <svg viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10"></circle>
-          </svg>
-        </div>
-        <h2 class="status-title">Проверка данных...</h2>
+      <div class="input-group">
+        <label>Пароль</label>
+        <input
+          v-model="form.password"
+          type="password"
+          @keyup.enter="handleLogin"
+          :disabled="isLoading"
+        />
       </div>
 
-      <!-- Состояние успеха -->
-      <div v-if="success" class="status-container success">
-        <div class="success-icon">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22,4 12,14.01 9,11.01"></polyline>
-          </svg>
-        </div>
-        <h2 class="status-title">Успешно!</h2>
-        <p class="status-message">Перенаправление в систему...</p>
-      </div>
-    </div>
-
-    <!-- Фоновая анимация (оставлена из вашего кода) -->
-    <div class="background-animation">
-      <div class="floating-shape shape-1"></div>
-      <div class="floating-shape shape-2"></div>
-      <div class="floating-shape shape-3"></div>
+      <button
+        class="login-button"
+        @click="handleLogin"
+        :disabled="isLoading || !form.login || !form.password"
+      >
+        {{ isLoading ? "Вход..." : "Войти" }}
+      </button>
     </div>
   </div>
 </template>
 
 <script>
-import axios from "axios";
-
-const api = axios.create({
-  baseURL: "http://localhost:8000",
-  withCredentials: true,
-  headers: { "Content-Type": "application/json" },
-});
+import authService from "@/services/auth";
 
 export default {
-  name: "LoginView",
   data() {
     return {
       form: { login: "", password: "" },
       isLoading: false,
       errorMessage: "",
-      showPassword: false,
-      shakeCard: false,
     };
   },
-  methods: {
-    async checkAuth() {
-      try {
-        const response = await api.get("/api/auth/me/");
-        localStorage.setItem("secretary", JSON.stringify(response.data));
-        if (["/", "/login"].includes(this.$route.path)) {
-          this.$router.push("/homepage");
-        }
-      } catch {
-        localStorage.removeItem("secretary");
-      }
-    },
 
+  async created() {
+    if (authService.isAuthenticated()) {
+      this.$router.push("/homepage");
+    }
+  },
+
+  methods: {
     async handleLogin() {
+      this.isLoading = true;
       this.errorMessage = "";
 
-      if (!this.form.login || !this.form.password) {
-        this.errorMessage = "Заполните все поля";
-        this.triggerShake();
-        return;
-      }
-
-      this.isLoading = true;
-
       try {
-        const response = await api.post("/api/auth/login/", {
-          login: this.form.login,
-          password: this.form.password,
-        });
-
-        localStorage.setItem("secretary", JSON.stringify(response.data.user));
-        window.dispatchEvent(new Event("authChanged"));
-
-        // Не показываем статус успеха, а сразу редиректим для скорости
+        await authService.login(this.form);
+        // Небольшая задержка, чтобы все компоненты успели обновиться
+        await new Promise((resolve) => setTimeout(resolve, 80));
         this.$router.push("/homepage");
       } catch (error) {
+        this.errorMessage =
+          error.response?.data?.error || "Неверный логин или пароль";
+      } finally {
         this.isLoading = false;
-        if (error.response?.status === 401) {
-          this.errorMessage = "Неверный логин или пароль";
-        } else if (error.response?.status === 403) {
-          this.errorMessage = "Аккаунт заблокирован";
-        } else {
-          this.errorMessage = "Ошибка соединения. Попробуйте позже.";
-        }
-        this.triggerShake();
       }
     },
-
-    triggerShake() {
-      this.shakeCard = true;
-      setTimeout(() => (this.shakeCard = false), 500);
-    },
-  },
-  async created() {
-    await this.checkAuth();
   },
 };
 </script>

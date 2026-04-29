@@ -252,12 +252,16 @@ export default {
             params: {
               Status: true,
             },
+            withCredentials: true,
           }
         );
         this.specializations = specializationsRes.data;
 
         const membersRes = await axios.get(
-          "http://localhost:8000/api/commission_members/"
+          "http://localhost:8000/api/commission_members/",
+          {
+            withCredentials: true,
+          }
         );
         this.commissionMembersList = membersRes.data;
       } catch (error) {
@@ -336,6 +340,7 @@ export default {
             headers: {
               "Content-Type": "application/json",
             },
+            withCredentials: true,
           }
         );
 
@@ -347,6 +352,7 @@ export default {
           ID_Commission: commissionId,
           ID_Member: parseInt(this.selectedChairman),
           Role: "Председатель",
+          withCredentials: true,
         });
 
         // 3. Добавляем секретаря (НЕ передаём поле ID!)
@@ -354,6 +360,7 @@ export default {
           ID_Commission: commissionId,
           ID_Member: parseInt(this.selectedSecretary),
           Role: "Секретарь",
+          withCredentials: true,
         });
 
         // 4. Добавляем членов комиссии (НЕ передаём поле ID!)
@@ -365,6 +372,7 @@ export default {
               ID_Commission: commissionId,
               ID_Member: parseInt(memberId),
               Role: "Член аттестационной комиссии",
+              withCredentials: true,
             }
           );
         }
@@ -375,6 +383,7 @@ export default {
           {
             ID_Specialization: parseInt(this.selectedSpecialization),
             ID_Secretary: parseInt(this.selectedSecretary),
+            withCredentials: true,
           }
         );
 
