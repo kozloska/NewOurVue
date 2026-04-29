@@ -100,27 +100,48 @@
 </template>
 
 <script>
+import authService from "@/services/auth";
+
 export default {
+  data() {
+    return {
+      secretary: null,
+    };
+  },
+
   computed: {
     isAuthenticated() {
-      const secretary = JSON.parse(localStorage.getItem("secretary"));
-      return !!secretary;
+      return !!this.secretary;
     },
     userFullName() {
-      const secretary = JSON.parse(localStorage.getItem("secretary"));
-      if (!secretary) return "";
-      return `${secretary.Surname} ${secretary.Name} ${secretary.Patronymic}`;
+      if (!this.secretary) return "";
+      return `${this.secretary.Surname || ""} ${this.secretary.Name || ""} ${
+        this.secretary.Patronymic || ""
+      }`.trim();
     },
     isAdmin() {
-      const secretary = JSON.parse(localStorage.getItem("secretary"));
-      return secretary && secretary.ID === 1;
+      return this.secretary && this.secretary.ID === 1;
     },
   },
+
+  created() {
+    this.loadUser();
+    window.addEventListener("authChanged", this.loadUser);
+  },
+
+  beforeUnmount() {
+    window.removeEventListener("authChanged", this.loadUser);
+  },
+
   methods: {
-    logout() {
+    loadUser() {
+      this.secretary = authService.getUser();
+    },
+
+    async logout() {
       if (confirm("Вы уверены, что хотите выйти?")) {
-        localStorage.removeItem("secretary");
-        this.$router.push("/login");
+        await authService.logout();
+        this.$router.push("/"); // или "/login"
       }
     },
   },

@@ -24,7 +24,6 @@ api.interceptors.response.use(
 const authService = {
   async login(credentials) {
     const { data } = await api.post("/api/auth/login/", credentials);
-
     if (data.user) {
       localStorage.setItem("secretary", JSON.stringify(data.user));
       window.dispatchEvent(new Event("authChanged"));
@@ -36,7 +35,10 @@ const authService = {
     try {
       await api.post("/api/auth/logout/");
     } catch (err) {
-      console.warn("Server logout failed");
+      console.warn(
+        "Server logout failed, but clearing local state anyway",
+        err
+      );
     } finally {
       localStorage.removeItem("secretary");
       window.dispatchEvent(new Event("authChanged"));
@@ -60,5 +62,4 @@ const authService = {
   },
 };
 
-// Экспорт по умолчанию — чтобы import authService from '@/services/auth' работал
 export default authService;

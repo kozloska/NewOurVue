@@ -92,17 +92,15 @@ router.beforeEach(async (to, from, next) => {
     }
 
     try {
-      await authService.getCurrentUser(); // проверяем сессию на сервере
+      await authService.getCurrentUser();
       next();
     } catch (error) {
       next("/");
     }
+  } else if (to.path === "/" && authService.isAuthenticated()) {
+    next("/homepage");
+    return;
   } else {
-    // Если идём на логин, но уже авторизованы — отправляем на homepage
-    if (authService.isAuthenticated() && to.path === "/") {
-      next("/homepage");
-      return;
-    }
     next();
   }
 });
