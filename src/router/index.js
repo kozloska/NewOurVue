@@ -1,7 +1,6 @@
 // src/router/index.js
 import { createRouter, createWebHistory } from "vue-router";
 import LoginView from "../views/LoginView.vue";
-import ProfileView from "../views/ProfileView.vue";
 import authService from "@/services/auth";
 
 const routes = [
@@ -9,12 +8,6 @@ const routes = [
     path: "/",
     name: "Login",
     component: LoginView,
-  },
-  {
-    path: "/profile",
-    name: "Profile",
-    component: ProfileView,
-    meta: { requiresAuth: true },
   },
   {
     path: "/homepage",
@@ -68,6 +61,7 @@ const routes = [
     path: "/generateprotocols",
     name: "GenerateProtocols",
     component: () => import("../components/GenerateProtocols.vue"),
+    meta: { requiresAuth: true }, // добавил защиту
   },
   {
     path: "/management",
@@ -75,6 +69,14 @@ const routes = [
     component: () => import("../components/ManagementPanel.vue"),
     meta: { requiresAuth: true },
   },
+  {
+    path: "/profile",
+    name: "Profile",
+    component: () => import("../views/ProfileView.vue"),
+    meta: { requiresAuth: true },
+  },
+
+  // Catch-all — редирект на логин
   { path: "/:catchAll(.*)", redirect: "/" },
 ];
 
@@ -82,24 +84,32 @@ const router = createRouter({
   history: createWebHistory(),
   routes,
 });
+
+// Глобальная защита маршрутов
 router.beforeEach(async (to, from, next) => {
   const requiresAuth = to.meta.requiresAuth;
 
+  // Если маршрут требует авторизации
   if (requiresAuth) {
     if (!authService.isAuthenticated()) {
+      console.log("Доступ запрещён: не авторизован → редирект на /");
       next("/");
       return;
     }
 
+    // Проверяем, жива ли сессия на сервере
     try {
       await authService.getCurrentUser();
-      next();
+      next(); // Всё хорошо — пропускаем
     } catch (error) {
+      console.log("Сессия истекла или недействительна → редирект на /");
       next("/");
     }
-  } else if (to.path === "/" && authService.isAuthenticated()) {
+  }
+  // Если идём на страницу логина, но уже авторизованы
+  else if (to.path === "/" && authService.isAuthenticated()) {
+    console.log("Уже авторизован → редирект на homepage");
     next("/homepage");
-    return;
   } else {
     next();
   }
