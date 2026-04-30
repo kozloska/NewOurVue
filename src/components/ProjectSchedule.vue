@@ -1052,7 +1052,7 @@ const clearSpecializationFilter = () => {
 const loadSpecializations = async () => {
   try {
     // ✅ Заменено: axios + getApiBaseUrl() → api + относительный путь
-    const r = await api.get("/specializations/", {
+    const r = await api.get("/api/specializations/", {
       params: {
         page_size: 100,
         Status: true,
@@ -1082,7 +1082,7 @@ const loadDefenseSchedules = async () => {
       if (selectedSpecialization.value)
         p.specialization_id = selectedSpecialization.value;
       // ✅ Заменено: axios.get(`${getApiBaseUrl()}/...`) → api.get("/...")
-      const r = await api.get("/defenses/", { params: p });
+      const r = await api.get("/api/defenses/", { params: p });
       const d = r.data.results || r.data;
       all = [...all, ...d];
       more = !!r.data.next;
@@ -1107,7 +1107,7 @@ const loadProjects = async () => {
       more = true;
     while (more) {
       // ✅ Заменено: axios → api
-      const r = await api.get("/projects/", {
+      const r = await api.get("/api/projects/", {
         params: { page_size: 100, page, signal: abortController.value?.signal },
       });
       const d = r.data.results || r.data;
@@ -1131,7 +1131,7 @@ const loadStudents = async () => {
       page = 1,
       more = true;
     while (more) {
-      const r = await api.get("/students/", {
+      const r = await api.get("/api/students/", {
         params: { page_size: 100, page, signal: abortController.value?.signal },
       });
       const d = r.data.results || r.data;
@@ -1155,7 +1155,7 @@ const loadProtocols = async () => {
       page = 1,
       more = true;
     while (more) {
-      const r = await api.get("/protocols/", {
+      const r = await api.get("/api/protocols/", {
         params: {
           page_size: 100,
           page,
@@ -1240,7 +1240,7 @@ const assignSelectedStudentsToSchedule = async (schedule) => {
         try {
           // ✅ Заменено: axios.patch + хардкод → api.patch + относительный путь
           await api.patch(
-            `/protocols/${pr.ID}/`,
+            `/api/protocols/${pr.ID}/`,
             { ID_DefenseSchedule: schedule.ID },
             { signal: abortController.value?.signal }
           );
@@ -1321,7 +1321,7 @@ const unassignProjectFromScheduleLogic = async (project, schedule) => {
     for (const pr of prs) {
       try {
         await api.patch(
-          `/protocols/${pr.ID}/`,
+          `/api/protocols/${pr.ID}/`,
           { ID_DefenseSchedule: null },
           { signal: abortController.value?.signal }
         );
@@ -1379,7 +1379,7 @@ const createSchedule = async () => {
   try {
     // ✅ Заменено: axios.post + хардкод → api.post + относительный путь
     await api.post(
-      "/defenses/",
+      "/api/defenses/",
       {
         ...newScheduleForm.value,
         ...(newScheduleForm.value.ID_Specialization && {
@@ -1419,7 +1419,7 @@ const updateScheduleCapacity = async () => {
   loading.value = true;
   try {
     await api.patch(
-      `/defenses/${editingSchedule.value.ID}/`,
+      `/api/defenses/${editingSchedule.value.ID}/`,
       { Count: capacityForm.value.Count },
       { signal: abortController.value?.signal }
     );
