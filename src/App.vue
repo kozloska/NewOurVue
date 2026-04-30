@@ -70,7 +70,7 @@
           <span class="menu-text">Расписание проектов</span>
         </router-link>
 
-        <router-link
+       <!--  <router-link
           v-if="isAdmin"
           to="/archiveprotocols"
           class="menu-item"
@@ -88,7 +88,7 @@
         >
           <span class="menu-icon">⚙️</span>
           <span class="menu-text">Управление</span>
-        </router-link>
+        </router-link>-->
       </nav>
       <button @click="logout" class="logout-btn">
         <span class="logout-icon">🚪</span>

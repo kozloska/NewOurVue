@@ -184,8 +184,7 @@
 </template>
 
 <script>
-import axios from "axios";
-
+import api from "@/services/api";
 export default {
   data() {
     return {
@@ -254,15 +253,12 @@ export default {
       this.errorSpecializations = null;
 
       try {
-        const response = await axios.get(
-          "http://localhost:8000/api/secretary_specialization/",
-          {
-            params: {
-              ID_Secretary: this.secretaryId,
-              specialization_status: true,
-            },
-          }
-        );
+        const response = await api.get("/api/secretary_specialization/", {
+          params: {
+            ID_Secretary: this.secretaryId,
+            specialization_status: true,
+          },
+        });
         this.specializations = response.data;
       } catch (error) {
         console.error("Ошибка загрузки направлений:", error);
@@ -281,16 +277,13 @@ export default {
       this.errorCommissions = null;
 
       try {
-        const response = await axios.get(
-          "http://localhost:8000/api/commissions/",
-          {
-            params: {
-              id_member: this.secretaryId,
-              role: "Секретарь",
-              ID_Specialization: this.selectedSpecialization,
-            },
-          }
-        );
+        const response = await api.get("/api/commissions/", {
+          params: {
+            id_member: this.secretaryId,
+            role: "Секретарь",
+            ID_Specialization: this.selectedSpecialization,
+          },
+        });
         this.commissions = response.data;
       } catch (error) {
         console.error("Ошибка загрузки комиссий:", error);
@@ -307,14 +300,10 @@ export default {
       this.errorComposition = null;
 
       try {
-        const response = await axios.get(
-          "http://127.0.0.1:8000/api/commission_compositions/"
-        );
-
+        const response = await api.get("api/commission_compositions/");
         this.commissionComposition = response.data.filter(
           (member) => member.ID_Commission === this.selectedCommission
         );
-
         console.log("Состав комиссии:", this.commissionComposition);
       } catch (error) {
         console.error("Ошибка загрузки состава комиссии:", error);
@@ -332,12 +321,9 @@ export default {
       this.errorSchedules = null;
 
       try {
-        const response = await axios.get(
-          "http://localhost:8000/api/defenses/",
-          {
-            params: { specialization_id: this.selectedSpecialization },
-          }
-        );
+        const response = await api.get("/api/defenses/", {
+          params: { specialization_id: this.selectedSpecialization },
+        });
         this.schedules = response.data;
       } catch (error) {
         console.error("Ошибка загрузки расписания:", error);

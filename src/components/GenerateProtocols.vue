@@ -439,7 +439,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import api from "@/services/api";
 import Docxtemplater from "docxtemplater";
 import PizZip from "pizzip";
 
@@ -517,15 +517,12 @@ export default {
       this.loadingSpecializations = true;
       this.errorSpecializations = null;
       try {
-        const response = await axios.get(
-          `http://127.0.0.1:8000/api/secretary_specialization/`,
-          {
-            params: {
-              ID_Secretary: this.secretaryId,
-              specialization_status: true,
-            },
-          }
-        );
+        const response = await api.get("/api/secretary_specialization/", {
+          params: {
+            ID_Secretary: this.secretaryId,
+            specialization_status: true,
+          },
+        });
         this.specializations = response.data;
       } catch (error) {
         console.error("Ошибка загрузки направлений:", error);
@@ -541,12 +538,9 @@ export default {
       this.loadingDefenses = true;
       this.errorDefenses = null;
       try {
-        const response = await axios.get(
-          `http://127.0.0.1:8000/api/defenses/`,
-          {
-            params: { specialization_id: this.selectedSpecialization },
-          }
-        );
+        const response = await api.get("/api/defenses/", {
+          params: { specialization_id: this.selectedSpecialization },
+        });
         this.defenses = response.data;
       } catch (error) {
         console.error("Ошибка загрузки дат защиты:", error);
@@ -561,12 +555,9 @@ export default {
       this.loadingProjects = true;
       this.errorProjects = null;
       try {
-        const response = await axios.get(
-          `http://127.0.0.1:8000/api/projects/`,
-          {
-            params: { defense_schedule_id: this.selectedDefense },
-          }
-        );
+        const response = await api.get("/api/projects/", {
+          params: { defense_schedule_id: this.selectedDefense },
+        });
 
         // ✅ Шаг 1: Фильтруем только неутверждённые проекты
         let projects = response.data.filter((project) => !project.isApproved);
@@ -596,16 +587,13 @@ export default {
       this.errorStudents[projectId] = null;
       try {
         // ✅ Загружаем только студентов с protocol__Status=false и нужным ID_DefenseSchedule
-        const response = await axios.get(
-          `http://127.0.0.1:8000/api/students/`,
-          {
-            params: {
-              ID_Project: projectId,
-              ID_DefenseSchedule: this.selectedDefense,
-              protocol__Status: false,
-            },
-          }
-        );
+        const response = await api.get("/api/students/", {
+          params: {
+            ID_Project: projectId,
+            ID_DefenseSchedule: this.selectedDefense,
+            protocol__Status: false,
+          },
+        });
         const students = response.data;
 
         // ✅ Фильтруем только студентов с оценкой
@@ -613,15 +601,12 @@ export default {
 
         for (const student of studentsWithGrade) {
           try {
-            const protocolResponse = await axios.get(
-              "http://127.0.0.1:8000/api/protocols/",
-              {
-                params: {
-                  ID_Student: student.ID,
-                  ID_DefenseSchedule: this.selectedDefense,
-                },
-              }
-            );
+            const protocolResponse = await api.get("/api/protocols/", {
+              params: {
+                ID_Student: student.ID,
+                ID_DefenseSchedule: this.selectedDefense,
+              },
+            });
             if (protocolResponse.data?.length > 0) {
               const protocol = protocolResponse.data[0];
               student.Grade = protocol.Grade;
@@ -639,8 +624,8 @@ export default {
               student.questions = {};
               if (protocol.ID_Question) {
                 try {
-                  const q1 = await axios.get(
-                    `http://127.0.0.1:8000/api/questions/${protocol.ID_Question}/`
+                  const q1 = await api.get(
+                    `/api/questions/${protocol.ID_Question}/`
                   );
                   student.questions.question1 = q1.data.Text;
                 } catch (e) {
@@ -649,8 +634,8 @@ export default {
               }
               if (protocol.ID_Question2) {
                 try {
-                  const q2 = await axios.get(
-                    `http://127.0.0.1:8000/api/questions/${protocol.ID_Question2}/`
+                  const q2 = await api.get(
+                    `/api/questions/${protocol.ID_Question2}/`
                   );
                   student.questions.question2 = q2.data.Text;
                 } catch (e) {
@@ -681,12 +666,9 @@ export default {
       this.loadingQuestions[projectId] = true;
       this.errorQuestions[projectId] = null;
       try {
-        const response = await axios.get(
-          `http://127.0.0.1:8000/api/questions/`,
-          {
-            params: { ID_Project: projectId, Status: false },
-          }
-        );
+        const response = await api.get("/api/questions/", {
+          params: { ID_Project: projectId, Status: false },
+        });
         this.questions[projectId] = response.data;
       } catch (error) {
         console.error(
@@ -707,15 +689,12 @@ export default {
         // Проверяем, что у ВСЕХ студентов протоколы имеют Status: true
         const checks = students.map(async (student) => {
           try {
-            const res = await axios.get(
-              "http://127.0.0.1:8000/api/protocols/",
-              {
-                params: {
-                  ID_Student: student.ID,
-                  ID_DefenseSchedule: this.selectedDefense,
-                },
-              }
-            );
+            const res = await api.get("/protocols/", {
+              params: {
+                ID_Student: student.ID,
+                ID_DefenseSchedule: this.selectedDefense,
+              },
+            });
             return res.data?.[0]?.Status === true;
           } catch {
             return false;
@@ -896,7 +875,7 @@ export default {
       const text = this.newQuestionText[projectId];
       if (!text?.trim()) return;
       try {
-        await axios.post("http://127.0.0.1:8000/api/questions/", {
+        await api.post("/api/questions/", {
           Text: text.trim(),
           ID_Project: projectId,
           Status: false,
@@ -926,12 +905,9 @@ export default {
         return;
       }
       try {
-        await axios.patch(
-          `http://127.0.0.1:8000/api/questions/${questionId}/`,
-          {
-            Text: this.editQuestionText.trim(),
-          }
-        );
+        await api.patch(`/api/questions/${questionId}/`, {
+          Text: this.editQuestionText.trim(),
+        });
         this.cancelEdit();
         this.projects.forEach((p) => this.loadQuestionsForProject(p.ID));
         this.successMessage = "Вопрос успешно обновлен";
@@ -944,9 +920,7 @@ export default {
     async deleteQuestion(questionId, projectId) {
       if (!confirm("Вы уверены, что хотите удалить этот вопрос?")) return;
       try {
-        await axios.delete(
-          `http://127.0.0.1:8000/api/questions/${questionId}/`
-        );
+        await api.delete(`/api/questions/${questionId}/`);
         await this.loadQuestionsForProject(projectId);
         this.successMessage = "Вопрос успешно удален";
       } catch (error) {
@@ -974,12 +948,9 @@ export default {
 
       try {
         // 1. Загружаем все доступные вопросы (Status: false)
-        const questionsRes = await axios.get(
-          "http://127.0.0.1:8000/api/questions/",
-          {
-            params: { ID_Project: project.ID, Status: false },
-          }
-        );
+        const questionsRes = await api.get("/api/questions/", {
+          params: { ID_Project: project.ID, Status: false },
+        });
         const questions = questionsRes.data;
 
         if (questions.length === 0) throw new Error("Нет доступных вопросов");
@@ -1019,25 +990,19 @@ export default {
 
         // 3. Обновляем протоколы в БД
         for (const a of assignments) {
-          const protoRes = await axios.get(
-            "http://127.0.0.1:8000/api/protocols/",
-            {
-              params: {
-                ID_Student: a.studentId,
-                ID_DefenseSchedule: this.selectedDefense,
-              },
-            }
-          );
+          const protoRes = await api.get("/api/protocols/", {
+            params: {
+              ID_Student: a.studentId,
+              ID_DefenseSchedule: this.selectedDefense,
+            },
+          });
           if (protoRes.data?.length > 0) {
             const proto = protoRes.data[0];
             const update = {};
             if (a.q1) update.ID_Question = a.q1;
             if (a.q2) update.ID_Question2 = a.q2;
             if (Object.keys(update).length > 0) {
-              await axios.patch(
-                `http://127.0.0.1:8000/api/protocols/${proto.ID}/`,
-                update
-              );
+              await api.patch(`/protocols/${proto.ID}/`, update);
             }
           }
         }
@@ -1045,17 +1010,14 @@ export default {
         // ✅ 4. Обновляем Статус ТОЛЬКО для назначенных вопросов
         for (const qId of assignedQuestionIds) {
           try {
-            await axios.patch(
-              `http://127.0.0.1:8000/api/questions/${qId}/`,
-              { Status: true } // ✅ Только назначенные → Status: true
-            );
+            await api.patch(`/api/questions/${qId}/`, { Status: true });
           } catch (e) {
             console.error(`Ошибка обновления вопроса ${qId}:`, e);
           }
         }
 
         // ✅ 5. Обновляем статус проекта
-        await axios.patch(`http://127.0.0.1:8000/api/projects/${project.ID}/`);
+        await api.patch(`/api/projects/${project.ID}/`);
 
         // 6. Обновляем локальные данные
         project.questionsDistributed = true;
@@ -1085,15 +1047,12 @@ export default {
 
       try {
         // Находим протокол студента
-        const protoRes = await axios.get(
-          "http://127.0.0.1:8000/api/protocols/",
-          {
-            params: {
-              ID_Student: student.ID,
-              ID_DefenseSchedule: this.selectedDefense,
-            },
-          }
-        );
+        const protoRes = await api.get("/protocols/", {
+          params: {
+            ID_Student: student.ID,
+            ID_DefenseSchedule: this.selectedDefense,
+          },
+        });
         if (!protoRes.data?.length) {
           alert("Протокол не найден для студента");
           return;
@@ -1162,15 +1121,12 @@ export default {
         // ✅ Последовательная генерация
         for (const student of students) {
           try {
-            const protoRes = await axios.get(
-              "http://127.0.0.1:8000/api/protocols/",
-              {
-                params: {
-                  ID_Student: student.ID,
-                  ID_DefenseSchedule: this.selectedDefense,
-                },
-              }
-            );
+            const protoRes = await api.get("/api/protocols/", {
+              params: {
+                ID_Student: student.ID,
+                ID_DefenseSchedule: this.selectedDefense,
+              },
+            });
             if (protoRes.data?.length > 0) {
               await this.generateDocxForStudent(student, project);
               successCount++;
@@ -1206,13 +1162,9 @@ export default {
         try {
           const formData = new FormData();
           formData.append("id_commission", commission.ID);
-          const res = await axios.post(
-            "http://127.0.0.1:8000/api/commission_composition/",
-            formData,
-            {
-              headers: { "Content-Type": "multipart/form-data" },
-            }
-          );
+          const res = await api.post("/api/commission_composition/", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          });
           commissionMembers = res.data;
         } catch (e) {
           console.error("Ошибка загрузки комиссии:", e);
@@ -1232,9 +1184,7 @@ export default {
         question2 = " ";
       if (protocol.ID_Question) {
         try {
-          const q1 = await axios.get(
-            `http://127.0.0.1:8000/api/questions/${protocol.ID_Question}/`
-          );
+          const q1 = await api.get(`/api/questions/${protocol.ID_Question}/`);
           question1 = q1.data.Text;
         } catch (e) {
           console.error("Ошибка вопроса 1:", e);
@@ -1242,9 +1192,7 @@ export default {
       }
       if (protocol.ID_Question2) {
         try {
-          const q2 = await axios.get(
-            `http://127.0.0.1:8000/api/questions/${protocol.ID_Question2}/`
-          );
+          const q2 = await api.get(`/api/questions/${protocol.ID_Question2}/`);
           question2 = q2.data.Text;
         } catch (e) {
           console.error("Ошибка вопроса 2:", e);
@@ -1254,12 +1202,9 @@ export default {
       // Склонение ФИО
       let studentDative = this.getFullName(student);
       try {
-        const dative = await axios.post(
-          "http://127.0.0.1:8000/api/fio_to_dative/",
-          {
-            fio: this.getFullName(student),
-          }
-        );
+        const dative = await api.post("/api/fio_to_dative/", {
+          fio: this.getFullName(student),
+        });
         studentDative = dative.data.dative_fio;
       } catch (e) {
         console.error("Ошибка склонения:", e);
@@ -1314,22 +1259,18 @@ export default {
         // ✅ Последовательное утверждение каждого протокола
         for (const student of students) {
           try {
-            const protoRes = await axios.get(
-              "http://127.0.0.1:8000/api/protocols/",
-              {
-                params: {
-                  ID_Student: student.ID,
-                  ID_DefenseSchedule: this.selectedDefense,
-                },
-              }
-            );
+            const protoRes = await api.get("/api/protocols/", {
+              params: {
+                ID_Student: student.ID,
+                ID_DefenseSchedule: this.selectedDefense,
+              },
+            });
             if (protoRes.data?.length > 0) {
               const protocol = protoRes.data[0];
               // ✅ Обновляем статус протокола
-              await axios.patch(
-                `http://127.0.0.1:8000/api/protocols/${protocol.ID}/`,
-                { Status: true }
-              );
+              await api.patch(`/api/protocols/${protocol.ID}/`, {
+                Status: true,
+              });
               // ✅ Обновляем локально данные студента
               student.Grade = protocol.Grade || student.Grade;
 
@@ -1337,8 +1278,8 @@ export default {
               student.questions = {};
               if (protocol.ID_Question) {
                 try {
-                  const q1 = await axios.get(
-                    `http://127.0.0.1:8000/api/questions/${protocol.ID_Question}/`
+                  const q1 = await api.get(
+                    `/api/questions/${protocol.ID_Question}/`
                   );
                   student.questions.question1 = q1.data.Text;
                 } catch (e) {
@@ -1347,8 +1288,8 @@ export default {
               }
               if (protocol.ID_Question2) {
                 try {
-                  const q2 = await axios.get(
-                    `http://127.0.0.1:8000/api/questions/${protocol.ID_Question2}/`
+                  const q2 = await api.get(
+                    `/api/questions/${protocol.ID_Question2}/`
                   );
                   student.questions.question2 = q2.data.Text;
                 } catch (e) {

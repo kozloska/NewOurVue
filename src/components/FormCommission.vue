@@ -185,7 +185,7 @@
 </template>
 
 <script>
-import axios from "axios";
+import api from "@/services/api";
 
 export default {
   data() {
@@ -246,23 +246,11 @@ export default {
     async loadData() {
       try {
         this.loadingSpecializations = true;
-        const specializationsRes = await axios.get(
-          "http://localhost:8000/api/specializations/",
-          {
-            params: {
-              Status: true,
-            },
-            withCredentials: true,
-          }
-        );
+        const specializationsRes = await api.get("/api/specializations/", {
+          params: { Status: true },
+        });
         this.specializations = specializationsRes.data;
-
-        const membersRes = await axios.get(
-          "http://localhost:8000/api/commission_members/",
-          {
-            withCredentials: true,
-          }
-        );
+        const membersRes = await api.get("/api/commission_members/");
         this.commissionMembersList = membersRes.data;
       } catch (error) {
         console.error("Ошибка загрузки данных:", error);
@@ -324,68 +312,48 @@ export default {
         this.creating = true;
         this.errorMessage = "";
         this.successMessage = "";
-
         // 1. Создаём комиссию
         const commissionData = {
           Name: this.commissionName.trim(),
           ID_Specialization: parseInt(this.selectedSpecialization),
         };
-
         console.log("Отправляем данные комиссии:", commissionData);
-
-        const commissionResponse = await axios.post(
-          "http://localhost:8000/api/commissions/",
-          commissionData,
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
-            withCredentials: true,
-          }
+        const commissionResponse = await api.post(
+          "/api/commissions/",
+          commissionData
         );
-
         const commissionId = commissionResponse.data.ID;
         console.log("Комиссия создана, ID:", commissionId);
 
         // 2. Добавляем председателя (НЕ передаём поле ID!)
-        await axios.post("http://localhost:8000/api/commission_compositions/", {
+        await api.post("api/commission_compositions/", {
           ID_Commission: commissionId,
           ID_Member: parseInt(this.selectedChairman),
           Role: "Председатель",
-          withCredentials: true,
         });
 
         // 3. Добавляем секретаря (НЕ передаём поле ID!)
-        await axios.post("http://localhost:8000/api/commission_compositions/", {
+        await api.post("api/commission_compositions/", {
           ID_Commission: commissionId,
           ID_Member: parseInt(this.selectedSecretary),
           Role: "Секретарь",
-          withCredentials: true,
         });
 
         // 4. Добавляем членов комиссии (НЕ передаём поле ID!)
         const validMembers = this.selectedMembers.filter((id) => id);
         for (const memberId of validMembers) {
-          await axios.post(
-            "http://localhost:8000/api/commission_compositions/",
-            {
-              ID_Commission: commissionId,
-              ID_Member: parseInt(memberId),
-              Role: "Член аттестационной комиссии",
-              withCredentials: true,
-            }
-          );
+          await api.post("api/commission_compositions/", {
+            ID_Commission: commissionId,
+            ID_Member: parseInt(memberId),
+            Role: "Член аттестационной комиссии",
+          });
         }
 
         // 5. Привязываем секретаря к специализации (SecretarySpecialization)
-        await axios.post(
-          "http://localhost:8000/api/secretary_specialization/",
-          {
-            ID_Specialization: parseInt(this.selectedSpecialization),
-            ID_Secretary: parseInt(this.selectedSecretary),
-            withCredentials: true,
-          }
-        );
+        await api.post("api/secretary_specialization/", {
+          ID_Specialization: parseInt(this.selectedSpecialization),
+          ID_Secretary: parseInt(this.selectedSecretary),
+        });
 
         this.successMessage = `Комиссия "${this.commissionName}" успешно сформирована!`;
         this.resetForm();

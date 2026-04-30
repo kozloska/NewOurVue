@@ -148,9 +148,9 @@
     </div>
   </div>
 </template>
-
 <script>
-import axios from "axios";
+// ✅ Импортируем централизованный api-инстанс
+import api from "@/services/api";
 
 export default {
   name: "UploadList",
@@ -175,14 +175,12 @@ export default {
     async loadSpecializations() {
       this.loadingSpecializations = true;
       try {
-        const response = await axios.get(
-          "http://localhost:8000/api/specializations/",
-          {
-            params: {
-              Status: true, // DjangoFilterBackend отфильтрует записи на сервере
-            },
-          }
-        );
+        // ✅ Заменено: axios + хардкод → api + относительный путь
+        const response = await api.get("/api/specializations/", {
+          params: {
+            Status: true,
+          },
+        });
         this.specializations = response.data;
       } catch (error) {
         this.errorMessage =
@@ -244,20 +242,18 @@ export default {
         this.progress = 0;
         this.clearMessages();
 
-        const response = await axios.post(
-          "http://localhost:8000/api/upload-excel/",
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-            onUploadProgress: (progressEvent) => {
-              this.progress = Math.round(
-                (progressEvent.loaded * 100) / progressEvent.total
-              );
-            },
-          }
-        );
+        // ✅ Заменено: axios.post + хардкод → api.post + относительный путь
+        // ✅ Сохранён заголовок multipart/form-data и onUploadProgress
+        const response = await api.post("/api/upload-excel/", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+          onUploadProgress: (progressEvent) => {
+            this.progress = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+          },
+        });
 
         if (response.data.status === "success") {
           this.successMessage = "Файл успешно загружен и обработан!";

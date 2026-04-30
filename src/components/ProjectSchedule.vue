@@ -713,10 +713,10 @@
     </div>
   </div>
 </template>
-
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import axios from "axios";
+// ✅ Заменяем axios на централизованный api-инстанс
+import api from "@/services/api";
 import {
   CalendarIcon,
   FolderIcon,
@@ -948,10 +948,8 @@ const getAssignedProjectsData = (scheduleId) => {
 const getAssignedProjectsCount = (id) => getAssignedProjectsData(id).length;
 const getAvailableSlots = (sch) => sch.Count - getAssignedProjectsCount(sch.ID);
 
-// 🔥 Проверка: есть ли оценки у студентов этого проекта
 const hasGradesInProject = (projectData) => {
   if (!projectData || !projectData.protocols) return false;
-  // Если хотя бы у одного протокола есть Grade (и он не пустая строка/null)
   return projectData.protocols.some((pr) => pr.Grade && pr.Grade.trim() !== "");
 };
 
@@ -1049,16 +1047,16 @@ const clearSpecializationFilter = () => {
 };
 
 // === API LOADERS ===
-const getApiBaseUrl = () =>
-  import.meta.env?.VITE_API_URL || "http://localhost:8000/api";
+// ✅ Функция getApiBaseUrl() больше не нужна — baseURL настроен в api.js
 
 const loadSpecializations = async () => {
   try {
-    const r = await axios.get(`${getApiBaseUrl()}/specializations/`, {
+    // ✅ Заменено: axios + getApiBaseUrl() → api + относительный путь
+    const r = await api.get("/specializations/", {
       params: {
         page_size: 100,
         Status: true,
-        signal: abortController.value?.signal,
+        signal: abortController.value?.signal, // ✅ signal поддерживается axios/api
       },
     });
     const d = r.data.results || r.data;
@@ -1083,7 +1081,8 @@ const loadDefenseSchedules = async () => {
       const p = { page_size: 100, page, signal: abortController.value?.signal };
       if (selectedSpecialization.value)
         p.specialization_id = selectedSpecialization.value;
-      const r = await axios.get(`${getApiBaseUrl()}/defenses/`, { params: p });
+      // ✅ Заменено: axios.get(`${getApiBaseUrl()}/...`) → api.get("/...")
+      const r = await api.get("/defenses/", { params: p });
       const d = r.data.results || r.data;
       all = [...all, ...d];
       more = !!r.data.next;
@@ -1107,7 +1106,8 @@ const loadProjects = async () => {
       page = 1,
       more = true;
     while (more) {
-      const r = await axios.get(`${getApiBaseUrl()}/projects/`, {
+      // ✅ Заменено: axios → api
+      const r = await api.get("/projects/", {
         params: { page_size: 100, page, signal: abortController.value?.signal },
       });
       const d = r.data.results || r.data;
@@ -1131,7 +1131,7 @@ const loadStudents = async () => {
       page = 1,
       more = true;
     while (more) {
-      const r = await axios.get(`${getApiBaseUrl()}/students/`, {
+      const r = await api.get("/students/", {
         params: { page_size: 100, page, signal: abortController.value?.signal },
       });
       const d = r.data.results || r.data;
@@ -1155,7 +1155,7 @@ const loadProtocols = async () => {
       page = 1,
       more = true;
     while (more) {
-      const r = await axios.get(`${getApiBaseUrl()}/protocols/`, {
+      const r = await api.get("/protocols/", {
         params: {
           page_size: 100,
           page,
@@ -1238,8 +1238,9 @@ const assignSelectedStudentsToSchedule = async (schedule) => {
         );
         if (!pr || !pr.ID) continue;
         try {
-          await axios.patch(
-            `${getApiBaseUrl()}/protocols/${pr.ID}/`,
+          // ✅ Заменено: axios.patch + хардкод → api.patch + относительный путь
+          await api.patch(
+            `/protocols/${pr.ID}/`,
             { ID_DefenseSchedule: schedule.ID },
             { signal: abortController.value?.signal }
           );
@@ -1275,7 +1276,6 @@ const assignSelectedStudentsToSchedule = async (schedule) => {
 };
 
 const showUnassignConfirmation = (project, schedule) => {
-  // 🔥 Дополнительная проверка перед открытием модалки
   const pData = getAssignedProjectsData(schedule.ID).find(
     (p) => p.project.ID === project.ID
   );
@@ -1320,8 +1320,8 @@ const unassignProjectFromScheduleLogic = async (project, schedule) => {
       err = 0;
     for (const pr of prs) {
       try {
-        await axios.patch(
-          `${getApiBaseUrl()}/protocols/${pr.ID}/`,
+        await api.patch(
+          `/protocols/${pr.ID}/`,
           { ID_DefenseSchedule: null },
           { signal: abortController.value?.signal }
         );
@@ -1377,8 +1377,9 @@ const createSchedule = async () => {
     return addNotification("Заполните обязательные поля", "error");
   loading.value = true;
   try {
-    await axios.post(
-      `${getApiBaseUrl()}/defenses/`,
+    // ✅ Заменено: axios.post + хардкод → api.post + относительный путь
+    await api.post(
+      "/defenses/",
       {
         ...newScheduleForm.value,
         ...(newScheduleForm.value.ID_Specialization && {
@@ -1417,8 +1418,8 @@ const updateScheduleCapacity = async () => {
   if (!editingSchedule.value || capacityForm.value.Count < 1) return;
   loading.value = true;
   try {
-    await axios.patch(
-      `${getApiBaseUrl()}/defenses/${editingSchedule.value.ID}/`,
+    await api.patch(
+      `/defenses/${editingSchedule.value.ID}/`,
       { Count: capacityForm.value.Count },
       { signal: abortController.value?.signal }
     );

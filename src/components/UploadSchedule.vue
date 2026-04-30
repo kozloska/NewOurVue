@@ -142,7 +142,8 @@
 </template>
 
 <script>
-import axios from "axios";
+// ✅ Импортируем централизованный api-инстанс
+import api from "@/services/api";
 
 export default {
   name: "UploadSchedule",
@@ -167,15 +168,12 @@ export default {
     async loadSpecializations() {
       this.loadingSpecializations = true;
       try {
-        const response = await axios.get(
-          "http://localhost:8000/api/specializations/",
-          {
-            params: {
-              Status: true,
-            },
-            withCredentials: true,
-          }
-        );
+        // ✅ Заменено: axios + хардкод → api + относительный путь
+        const response = await api.get("/api/specializations/", {
+          params: {
+            Status: true,
+          },
+        });
         this.specializations = response.data;
       } catch (error) {
         this.errorMessage =
@@ -223,7 +221,6 @@ export default {
     },
 
     async uploadFile() {
-      // ✅ Проверка: выбрано ли направление и файл
       if (!this.selectedFile || !this.selectedSpecialization) {
         this.errorMessage =
           "Выберите направление подготовки и файл для загрузки";
@@ -232,7 +229,6 @@ export default {
 
       const formData = new FormData();
       formData.append("file", this.selectedFile);
-      // ✅ Передаём ID специальности на сервер
       formData.append("specialization_id", this.selectedSpecialization);
 
       try {
@@ -240,8 +236,10 @@ export default {
         this.progress = 0;
         this.clearMessages();
 
-        const response = await axios.post(
-          "http://localhost:8000/api/upload-defense-schedule/",
+        // ✅ Заменено: axios.post + хардкод → api.post + относительный путь
+        // ✅ Сохранён заголовок multipart/form-data и onUploadProgress
+        const response = await api.post(
+          "/api/upload-defense-schedule/",
           formData,
           {
             headers: {

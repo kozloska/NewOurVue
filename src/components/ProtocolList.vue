@@ -178,7 +178,8 @@
 </template>
 
 <script>
-import axios from "axios";
+// ✅ Импортируем централизованный api-инстанс
+import api from "@/services/api";
 import Docxtemplater from "docxtemplater";
 import PizZip from "pizzip";
 
@@ -225,6 +226,7 @@ export default {
   methods: {
     async loadTemplate() {
       try {
+        // ✅ fetch оставляем как есть — это загрузка статического файла, не API
         const response = await fetch("/templates/test.docx");
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -278,16 +280,9 @@ export default {
       this.bulkApproving = true;
 
       try {
+        // ✅ Заменено: axios.patch + хардкод → api.patch + относительный путь
         const approvePromises = this.selectedProtocols.map((protocolId) =>
-          axios.patch(
-            `http://localhost:8000/api/protocols/${protocolId}/`,
-            { Status: true },
-            {
-              headers: {
-                "Content-Type": "application/json",
-              },
-            }
-          )
+          api.patch(`/api/protocols/${protocolId}/`, { Status: true })
         );
 
         await Promise.all(approvePromises);
@@ -337,12 +332,8 @@ export default {
           params.student_fio = this.searchQuery.trim();
         }
 
-        const response = await axios.get(
-          "http://localhost:8000/api/protocols/",
-          {
-            params,
-          }
-        );
+        // ✅ Заменено: axios + хардкод → api + относительный путь
+        const response = await api.get("/api/protocols/", { params });
 
         let newProtocols = response.data.results || response.data;
 
@@ -374,15 +365,10 @@ export default {
       this.approvingProtocols[protocol.ID] = true;
 
       try {
-        const response = await axios.patch(
-          `http://localhost:8000/api/protocols/${protocol.ID}/`,
-          { Status: true },
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        // ✅ Заменено: axios.patch + хардкод → api.patch + относительный путь
+        const response = await api.patch(`/api/protocols/${protocol.ID}/`, {
+          Status: true,
+        });
 
         if (response.status === 200) {
           protocol.Status = true;
@@ -481,9 +467,12 @@ export default {
         console.log("Используем данные из протокола:", commissionMembers);
       } else if (commission?.ID) {
         try {
-          const commissionResponse = await axios.post(
-            "http://localhost:8000/api/commission_composition/",
-            new FormData().append("id_commission", commission.ID),
+          const formData = new FormData();
+          formData.append("id_commission", commission.ID);
+          // ✅ ВАЖНО: для multipart/form-data сохраняем заголовок!
+          const commissionResponse = await api.post(
+            "/api/commission_composition/",
+            formData,
             {
               headers: {
                 "Content-Type": "multipart/form-data",
@@ -516,8 +505,9 @@ export default {
 
       if (protocol.ID_Question) {
         try {
-          const q1Response = await axios.get(
-            `http://localhost:8000/api/questions/${protocol.ID_Question}/`
+          // ✅ Заменено: axios.get + хардкод → api.get + относительный путь
+          const q1Response = await api.get(
+            `/api/questions/${protocol.ID_Question}/`
           );
           question1 = q1Response.data.Text;
         } catch (error) {
@@ -527,8 +517,8 @@ export default {
 
       if (protocol.ID_Question2) {
         try {
-          const q2Response = await axios.get(
-            `http://localhost:8000/api/questions/${protocol.ID_Question2}/`
+          const q2Response = await api.get(
+            `/api/questions/${protocol.ID_Question2}/`
           );
           question2 = q2Response.data.Text;
         } catch (error) {
@@ -538,12 +528,10 @@ export default {
 
       let studentDative = this.getFullName(student);
       try {
-        const dativeResponse = await axios.post(
-          "http://localhost:8000/api/fio_to_dative/",
-          {
-            fio: this.getFullName(student),
-          }
-        );
+        // ✅ Заменено: axios.post + хардкод → api.post + относительный путь
+        const dativeResponse = await api.post("/api/fio_to_dative/", {
+          fio: this.getFullName(student),
+        });
         studentDative = dativeResponse.data.dative_fio;
       } catch (error) {
         console.error("Ошибка склонения ФИО:", error);

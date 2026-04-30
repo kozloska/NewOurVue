@@ -639,9 +639,8 @@
     </div>
   </div>
 </template>
-
 <script>
-import axios from "axios";
+import api from "@/services/api";
 import ProjectFilter from "./ProjectFilter.vue";
 
 export default {
@@ -722,6 +721,7 @@ export default {
         }
       }
     },
+
     async handleFilterApplied(filterParams) {
       this.activeFilters = filterParams;
       this.showProjects = true;
@@ -731,6 +731,7 @@ export default {
       );
       this.loadProjectsBySchedule(filterParams.scheduleId);
     },
+
     async updateDefenseScheduleCommission(scheduleId, commissionId) {
       if (!scheduleId) return;
       try {
@@ -740,8 +741,9 @@ export default {
         } else {
           payload.ID_Commission = null;
         }
-        const response = await axios.patch(
-          `http://localhost:8000/api/defenses/${scheduleId}/`,
+        // ✅ Заменено: axios + хардкод → api + относительный путь
+        const response = await api.patch(
+          `/api/defenses/${scheduleId}/`,
           payload
         );
         if (response.status === 200) {
@@ -755,39 +757,37 @@ export default {
         );
       }
     },
+
     backToFilters() {
       this.showProjects = false;
     },
+
     resetProjects() {
       this.showProjects = false;
       this.activeFilters = null;
       this.projects = [];
       sessionStorage.removeItem("projectFilterParams");
     },
+
     async loadProjectsBySchedule(scheduleId) {
       this.loading = true;
       this.error = null;
       try {
-        const response = await axios.get(
-          "http://localhost:8000/api/projects/",
-          {
-            params: { defense_schedule_id: scheduleId },
-          }
-        );
+        // ✅ Заменено: axios → api
+        const response = await api.get("/api/projects/", {
+          params: { defense_schedule_id: scheduleId },
+        });
 
-        // ✅ Сначала загружаем всех студентов для всех проектов
         const studentPromises = response.data.map((project) =>
           this.loadStudentsForProject(project.ID)
         );
         await Promise.all(studentPromises);
 
-        // ✅ Фильтруем проекты: оставляем только те, у которых есть студенты
         this.projects = response.data.filter((project) => {
           const students = this.students[project.ID];
           return students && students.length > 0;
         });
 
-        // ✅ Загружаем время защиты только для отфильтрованных проектов
         for (const project of this.projects) {
           await this.loadProjectDefenseTimes(project);
         }
@@ -800,21 +800,18 @@ export default {
         this.loading = false;
       }
     },
+
     async loadStudentsForProject(projectId) {
       this.studentsLoading[projectId] = true;
       this.studentsError[projectId] = false;
       try {
-        const response = await axios.get(
-          "http://localhost:8000/api/students/",
-          {
-            params: {
-              ID_Project: projectId,
-              ID_DefenseSchedule: this.activeFilters?.scheduleId,
-              protocol__Status: false, // ✅ Только студенты с несданными протоколами
-            },
-          }
-        );
-        // ✅ Если студентов нет — проект не добавляем в отображение
+        const response = await api.get("/api/students/", {
+          params: {
+            ID_Project: projectId,
+            ID_DefenseSchedule: this.activeFilters?.scheduleId,
+            protocol__Status: false,
+          },
+        });
         this.students[projectId] = response.data;
       } catch (err) {
         this.studentsError[projectId] = true;
@@ -823,37 +820,39 @@ export default {
         this.studentsLoading[projectId] = false;
       }
     },
+
     showProjectDetails(project) {
       this.selectedProject = project;
     },
+
     closeModal() {
       this.selectedProject = null;
     },
+
     async openQuestionsModal(project) {
       this.selectedProject = project;
       this.questionsModalVisible = true;
       await this.loadQuestions();
     },
+
     async loadQuestions() {
       try {
-        const response = await axios.get(
-          "http://localhost:8000/api/questions/",
-          {
-            params: {
-              ID_Project: this.selectedProject.ID,
-              Status: false,
-            },
-          }
-        );
+        const response = await api.get("/api/questions/", {
+          params: {
+            ID_Project: this.selectedProject.ID,
+            Status: false,
+          },
+        });
         this.questions = response.data.map((q) => ({ ...q, editing: false }));
       } catch (error) {
         console.error("Ошибка загрузки вопросов:", error);
       }
     },
+
     async addQuestion() {
       if (!this.newQuestionText.trim()) return;
       try {
-        await axios.post("http://localhost:8000/api/questions/", {
+        await api.post("/api/questions/", {
           Text: this.newQuestionText,
           ID_Project: this.selectedProject.ID,
           Status: false,
@@ -864,19 +863,20 @@ export default {
         console.error("Ошибка добавления вопроса:", error);
       }
     },
+
     editQuestion(question) {
       question.editing = true;
     },
+
     async saveQuestion(question) {
       if (!question.Text.trim()) {
         alert("Вопрос не может быть пустым");
         return;
       }
       try {
-        const response = await axios.patch(
-          `http://localhost:8000/api/questions/${question.ID}/`,
-          { Text: question.Text }
-        );
+        const response = await api.patch(`/api/questions/${question.ID}/`, {
+          Text: question.Text,
+        });
         if (response.data.error) {
           alert(response.data.error);
           return;
@@ -890,6 +890,7 @@ export default {
         );
       }
     },
+
     async deleteQuestion(questionId) {
       try {
         if (!questionId || typeof questionId !== "number") {
@@ -898,9 +899,7 @@ export default {
           return;
         }
         if (!confirm("Вы уверены, что хотите удалить этот вопрос?")) return;
-        const response = await axios.delete(
-          `http://localhost:8000/api/questions/${questionId}/`
-        );
+        const response = await api.delete(`/questions/${questionId}/`);
         if (response.status === 200 || response.status === 204) {
           this.questions = this.questions.filter((q) => q.ID !== questionId);
           alert("Вопрос успешно удален!");
@@ -918,11 +917,13 @@ export default {
         alert(`Ошибка удаления: ${errorMessage}`);
       }
     },
+
     closeQuestionsModal() {
       this.questionsModalVisible = false;
       this.selectedProject = null;
       this.questions = [];
     },
+
     async startRecording() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -944,12 +945,14 @@ export default {
         this.uploadStatus = "Не удалось получить доступ к микрофону";
       }
     },
+
     stopRecording() {
       if (this.mediaRecorder) {
         this.mediaRecorder.stop();
         this.isRecording = false;
       }
     },
+
     toggleRecording() {
       if (
         this.selectedProject.Status !== "Защита начата" &&
@@ -964,6 +967,7 @@ export default {
         this.startRecording();
       }
     },
+
     cancelRecording() {
       this.audioBlob = null;
       this.audioUrl = null;
@@ -971,6 +975,7 @@ export default {
       this.uploadStatus = "";
       this.clearLocalAudio();
     },
+
     async uploadAudio() {
       if (!this.audioBlob) return;
       try {
@@ -978,15 +983,12 @@ export default {
         const formData = new FormData();
         formData.append("audio", this.audioBlob, `recording_${Date.now()}.mp3`);
         formData.append("project_id", this.selectedProject.ID.toString());
-        const response = await axios.post(
-          "http://localhost:8000/api/upload-audio/",
-          formData,
-          {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          }
-        );
+        // ✅ ВАЖНО: для multipart/form-data сохраняем заголовок!
+        const response = await api.post("/api/upload-audio/", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
         if (response.status === 202) {
           this.uploadStatus = "Запись успешно отправлена!";
           await this.setDefenseEndTime();
@@ -1007,18 +1009,14 @@ export default {
           now.getMinutes()
         ).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
 
-        const response = await axios.patch(
-          "http://localhost:8000/api/projects/project_time_end/",
-          {
-            ID_Project: this.selectedProject.ID,
-            DefenseEndTime: endTime,
-            ID_DefenseSchedule: this.activeFilters?.scheduleId, // ✅
-          }
-        );
+        const response = await api.patch("/api/projects/project_time_end/", {
+          ID_Project: this.selectedProject.ID,
+          DefenseEndTime: endTime,
+          ID_DefenseSchedule: this.activeFilters?.scheduleId,
+        });
 
         if (response.status === 200) {
           this.selectedProject.DefenseEndTime = endTime;
-          // Обновляем данные в таблице
           await this.refreshProjectsData();
         }
       } catch (error) {
@@ -1026,7 +1024,6 @@ export default {
       }
     },
 
-    // ✅ ИЗМЕНЕНО: Открываем модальное окно с группировкой по проектам
     async openGradingModal() {
       this.gradingModalVisible = true;
       this.expandedProjectId = null;
@@ -1034,7 +1031,6 @@ export default {
       this.loadingAllStudents = true;
 
       try {
-        // Формируем структуру: проекты со студентами внутри
         for (const project of this.projects) {
           const projectStudents = this.students[project.ID] || [];
           const projectWithStudents = {
@@ -1046,18 +1042,14 @@ export default {
           };
           this.projectsForGrading.push(projectWithStudents);
 
-          // Загружаем существующие оценки для студентов этого проекта
           for (const student of projectWithStudents.students) {
             try {
-              const response = await axios.get(
-                "http://localhost:8000/api/protocols/",
-                {
-                  params: {
-                    ID_Student: student.ID,
-                    ID_DefenseSchedule: this.activeFilters.scheduleId,
-                  },
-                }
-              );
+              const response = await api.get("/api/protocols/", {
+                params: {
+                  ID_Student: student.ID,
+                  ID_DefenseSchedule: this.activeFilters.scheduleId,
+                },
+              });
               if (response.data && response.data.length > 0) {
                 const existingProtocol = response.data[0];
                 student.grade = existingProtocol.Grade || "";
@@ -1083,7 +1075,6 @@ export default {
       this.expandedProjectId = null;
     },
 
-    // ✅ НОВОЕ: Раскрыть/свернуть проект в модальном окне
     toggleProjectGrading(projectId) {
       if (this.expandedProjectId === projectId) {
         this.expandedProjectId = null;
@@ -1092,7 +1083,6 @@ export default {
       }
     },
 
-    // ✅ НОВОЕ: Проверка, полностью ли оценен проект
     isProjectFullyGraded(project) {
       if (!project.students || project.students.length === 0) return true;
       return project.students.every((s) => s.grade && s.grade.trim() !== "");
@@ -1104,8 +1094,9 @@ export default {
         if (this.activeFilters?.commissionId) {
           const formData = new FormData();
           formData.append("id_commission", this.activeFilters.commissionId);
-          const response = await axios.post(
-            "http://localhost:8000/api/commission_composition/",
+          // ✅ ВАЖНО: для multipart/form-data сохраняем заголовок!
+          const response = await api.post(
+            "/api/commission_composition/",
             formData,
             {
               headers: {
@@ -1121,6 +1112,7 @@ export default {
         this.loadingCommission = false;
       }
     },
+
     goToProjectFilter() {
       this.showProjects = false;
       this.activeFilters = null;
@@ -1131,6 +1123,7 @@ export default {
       this.closeGradingModal();
       sessionStorage.removeItem("projectFilterParams");
     },
+
     async saveGrade(student) {
       if (!student.grade) {
         alert("Пожалуйста, выберите оценку");
@@ -1138,19 +1131,15 @@ export default {
       }
       this.savingGrades[student.ID] = true;
       try {
-        const response = await axios.patch(
-          "http://localhost:8000/api/students/update_grade/",
-          {
-            ID_Student: student.ID,
-            Grade: student.grade,
-          }
-        );
+        const response = await api.patch("/api/students/update_grade/", {
+          ID_Student: student.ID,
+          Grade: student.grade,
+        });
         if (response.status === 200) {
           student.hasExistingGrade = true;
           alert(
             `Оценка ${student.grade} сохранена для студента ${student.Surname} ${student.Name}`
           );
-          // Обновляем данные в таблице проектов
           await this.refreshProjectsData();
         }
       } catch (error) {
@@ -1163,6 +1152,7 @@ export default {
         this.savingGrades[student.ID] = false;
       }
     },
+
     formatDateTime(dateTimeStr) {
       if (!dateTimeStr) return "";
       let date;
@@ -1183,6 +1173,7 @@ export default {
       const minutes = date.getMinutes().toString().padStart(2, "0");
       return `${day}.${month}.${year} ${hours}:${minutes}`;
     },
+
     async startDefense(project) {
       if (this.startingDefense[project.ID]) return;
       this.startingDefense[project.ID] = true;
@@ -1194,14 +1185,11 @@ export default {
         )}:${String(now.getMinutes()).padStart(2, "0")}:${String(
           now.getSeconds()
         ).padStart(2, "0")}`;
-        const response = await axios.patch(
-          "http://localhost:8000/api/projects/project_time_start/",
-          {
-            ID_Project: project.ID,
-            DefenseStartTime: defenseTime,
-            ID_DefenseSchedule: this.activeFilters?.scheduleId,
-          }
-        );
+        const response = await api.patch("/api/projects/project_time_start/", {
+          ID_Project: project.ID,
+          DefenseStartTime: defenseTime,
+          ID_DefenseSchedule: this.activeFilters?.scheduleId,
+        });
         if (response.status === 200) {
           project.Status = "Защита начата";
           project.DefenseStartTime = defenseTime;
@@ -1217,33 +1205,28 @@ export default {
         this.startingDefense[project.ID] = false;
       }
     },
+
     async refreshProjectsData() {
       try {
-        const response = await axios.get(
-          "http://localhost:8000/api/projects/",
-          {
-            params: {
-              defense_schedule_id: this.activeFilters.scheduleId,
-            },
-          }
-        );
+        const response = await api.get("/api/projects/", {
+          params: {
+            defense_schedule_id: this.activeFilters.scheduleId,
+          },
+        });
         for (const updatedProject of response.data) {
           const existingProject = this.projects.find(
             (p) => p.ID === updatedProject.ID
           );
           if (existingProject) {
-            // ✅ СОХРАНЯЕМ время перед обновлением
             const savedStartTime = existingProject.DefenseStartTime;
             const savedEndTime = existingProject.DefenseEndTime;
 
             Object.assign(existingProject, updatedProject);
 
-            // ✅ ВОССТАНАВЛИВАЕМ время
             if (savedStartTime)
               existingProject.DefenseStartTime = savedStartTime;
             if (savedEndTime) existingProject.DefenseEndTime = savedEndTime;
 
-            // ✅ ПЕРЕЗАГРУЖАЕМ из БД
             await this.loadProjectDefenseTimes(existingProject);
           }
         }
@@ -1251,6 +1234,7 @@ export default {
         console.error("Ошибка обновления данных проектов:", error);
       }
     },
+
     getProjectStatusClass(status) {
       const statusMap = {
         "Защита не начата": "status-not-started",
@@ -1261,9 +1245,9 @@ export default {
       };
       return statusMap[status] || "status-unknown";
     },
+
     async loadProjectDefenseTimes(project) {
       try {
-        // ✅ Ждём пока студенты загрузятся
         if (
           !this.students[project.ID] ||
           this.students[project.ID].length === 0
@@ -1276,20 +1260,16 @@ export default {
         const firstStudent = students[0];
 
         try {
-          const protocolResponse = await axios.get(
-            "http://localhost:8000/api/protocols/",
-            {
-              params: {
-                ID_Student: firstStudent.ID,
-                ID_DefenseSchedule: this.activeFilters?.scheduleId, // ✅ Важно!
-              },
-            }
-          );
+          const protocolResponse = await api.get("/api/protocols/", {
+            params: {
+              ID_Student: firstStudent.ID,
+              ID_DefenseSchedule: this.activeFilters?.scheduleId,
+            },
+          });
 
           if (protocolResponse.data && protocolResponse.data.length > 0) {
             const protocol = protocolResponse.data[0];
 
-            // ✅ Проверяем наличие времени перед присваиванием
             if (
               protocol.DefenseStartTime &&
               protocol.DefenseStartTime.trim() !== ""
@@ -1328,6 +1308,7 @@ export default {
         project.DefenseEndTime = null;
       }
     },
+
     getProjectStatusIcon(status) {
       const iconMap = {
         "Защита не начата": "⏸️",
@@ -1338,9 +1319,11 @@ export default {
       };
       return iconMap[status] || "❓";
     },
+
     getProjectStatusText(status) {
       return status || "Неизвестный статус";
     },
+
     formatTime(timeStr) {
       if (!timeStr) return "Не указано";
       if (typeof timeStr === "string" && timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
@@ -1364,27 +1347,27 @@ export default {
       }
       return "Не указано";
     },
+
     async updateProjectTime(project, timeType, newTime) {
       if (!newTime) return;
       try {
         const endpoint =
           timeType === "start"
-            ? "http://localhost:8000/api/projects/project_time_start/"
-            : "http://localhost:8000/api/projects/project_time_end/";
+            ? "/api/projects/project_time_start/"
+            : "/api/projects/project_time_end/";
 
         const payload = {
           ID_Project: project.ID,
-          ID_DefenseSchedule: this.activeFilters?.scheduleId, // ✅ Обязательно!
+          ID_DefenseSchedule: this.activeFilters?.scheduleId,
         };
 
-        // Добавляем нужное поле времени
         if (timeType === "start") {
           payload.DefenseStartTime = newTime + ":00";
         } else {
           payload.DefenseEndTime = newTime + ":00";
         }
 
-        const response = await axios.patch(endpoint, payload);
+        const response = await api.patch(endpoint, payload);
 
         if (response.status === 200) {
           if (timeType === "start") {
@@ -1403,6 +1386,7 @@ export default {
         );
       }
     },
+
     formatTimeForInput(timeStr) {
       if (!timeStr) return "";
       if (typeof timeStr === "string" && timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
@@ -1426,28 +1410,21 @@ export default {
       }
       return "";
     },
+
     async cancelDefense(project) {
       if (!confirm("Вы уверены, что хотите отменить защиту проекта?")) return;
       try {
-        // Сбрасываем время начала
-        await axios.patch(
-          "http://localhost:8000/api/projects/project_time_start/",
-          {
-            ID_Project: project.ID,
-            DefenseStartTime: null,
-            ID_DefenseSchedule: this.activeFilters?.scheduleId, // ✅
-          }
-        );
+        await api.patch("/api/projects/project_time_start/", {
+          ID_Project: project.ID,
+          DefenseStartTime: null,
+          ID_DefenseSchedule: this.activeFilters?.scheduleId,
+        });
 
-        // Сбрасываем время окончания
-        await axios.patch(
-          "http://localhost:8000/api/projects/project_time_end/",
-          {
-            ID_Project: project.ID,
-            DefenseEndTime: null,
-            ID_DefenseSchedule: this.activeFilters?.scheduleId, // ✅
-          }
-        );
+        await api.patch("/api/projects/project_time_end/", {
+          ID_Project: project.ID,
+          DefenseEndTime: null,
+          ID_DefenseSchedule: this.activeFilters?.scheduleId,
+        });
 
         project.Status = "Защита не начата";
         project.DefenseStartTime = null;
@@ -1462,6 +1439,7 @@ export default {
         );
       }
     },
+
     handleLocalAudioUpload(event) {
       const file = event.target.files[0];
       if (file && file.type.startsWith("audio/")) {
@@ -1472,12 +1450,12 @@ export default {
         alert("Пожалуйста, выберите аудиофайл");
       }
     },
+
     async saveAllGrades() {
       let savedCount = 0;
       let errorCount = 0;
       const gradesToSave = [];
 
-      // Собираем все оценки, которые были изменены
       for (const project of this.projectsForGrading) {
         for (const student of project.students) {
           if (student.grade && student.grade.trim() !== "") {
@@ -1493,16 +1471,12 @@ export default {
 
       this.savingAllGrades = true;
       try {
-        // ✅ СОХРАНЯЕМ ПОСЛЕДОВАТЕЛЬНО (не Promise.all)
         for (const { student } of gradesToSave) {
           try {
-            const response = await axios.patch(
-              "http://localhost:8000/api/students/update_grade/",
-              {
-                ID_Student: student.ID,
-                Grade: student.grade,
-              }
-            );
+            const response = await api.patch("/api/students/update_grade/", {
+              ID_Student: student.ID,
+              Grade: student.grade,
+            });
             if (response.status === 200) {
               student.hasExistingGrade = true;
               savedCount++;
@@ -1518,14 +1492,12 @@ export default {
           }
         }
 
-        // Показываем результат
         let message = `Сохранено оценок: ${savedCount}`;
         if (errorCount > 0) {
           message += `\nОшибок: ${errorCount}`;
         }
         alert(message);
 
-        // Обновляем таблицу проектов
         await this.refreshProjectsData();
       } catch (error) {
         console.error("Ошибка массового сохранения оценок:", error);
@@ -1534,6 +1506,7 @@ export default {
         this.savingAllGrades = false;
       }
     },
+
     clearLocalAudio() {
       this.localAudioFile = null;
       if (this.$refs.localAudioInput) {
@@ -1543,7 +1516,6 @@ export default {
   },
 };
 </script>
-
 <style scoped>
 .project-defense-container {
   width: 100%;
