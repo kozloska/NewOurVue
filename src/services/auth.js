@@ -2,8 +2,11 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "http://172.28.20.54/",
+  baseURL: "http://localhost:8000/",
   withCredentials: true,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 // Настройка CSRF для Django

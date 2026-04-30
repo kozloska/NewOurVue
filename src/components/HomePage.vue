@@ -11,24 +11,11 @@
     <div class="quick-actions">
       <h2>Быстрые действия</h2>
       <div class="actions-grid">
-        <router-link to="/uploadlist" class="action-card">
-          <div class="action-icon">📤</div>
-          <h3>Загрузить список студентов</h3>
-          <p>Импорт данных студентов из Excel файла</p>
-        </router-link>
-
-        <router-link to="/formcommission" class="action-card">
-          <div class="action-icon">👥</div>
-          <h3>Сформировать комиссию</h3>
-          <p>Создание новой экзаменационной комиссии</p>
-        </router-link>
-
-        <router-link to="/protocollist" class="action-card">
+        <router-link to="/generateprotocols" class="action-card">
           <div class="action-icon">📝</div>
           <h3>Протоколы</h3>
           <p>Список неподтвержденных протоколов</p>
         </router-link>
-
         <router-link to="/projectdefense" class="action-card">
           <div class="action-icon">🎓</div>
           <h3>Защита проектов</h3>

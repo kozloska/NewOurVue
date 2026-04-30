@@ -5,33 +5,10 @@
         <div class="user-info">{{ userFullName }}</div>
       </div>
       <nav class="menu">
+        <!-- Всегда видно всем авторизованным -->
         <router-link to="/homepage" class="menu-item" active-class="active">
           <span class="menu-icon">🏠</span>
           <span class="menu-text">Главная</span>
-        </router-link>
-
-        <router-link to="/uploadlist" class="menu-item" active-class="active">
-          <span class="menu-icon">📤</span>
-          <span class="menu-text">Загрузка списка тем</span>
-        </router-link>
-
-        <router-link
-          to="/uploadschedule"
-          class="menu-item"
-          active-class="active"
-        >
-          <span class="menu-icon">🔄</span>
-          <span class="menu-text">Загрузка расписания</span>
-        </router-link>
-
-        <router-link
-          v-if="isAdmin"
-          to="/formcommission"
-          class="menu-item"
-          active-class="active"
-        >
-          <span class="menu-icon">👥</span>
-          <span class="menu-text">Сформировать комиссию</span>
         </router-link>
 
         <router-link
@@ -52,7 +29,39 @@
           <span class="menu-text">Сформировать протоколы</span>
         </router-link>
 
+        <!-- Видно только админу -->
         <router-link
+          v-if="isAdmin"
+          to="/uploadlist"
+          class="menu-item"
+          active-class="active"
+        >
+          <span class="menu-icon">📤</span>
+          <span class="menu-text">Загрузка списка тем</span>
+        </router-link>
+
+        <router-link
+          v-if="isAdmin"
+          to="/uploadschedule"
+          class="menu-item"
+          active-class="active"
+        >
+          <span class="menu-icon">🔄</span>
+          <span class="menu-text">Загрузка расписания</span>
+        </router-link>
+
+        <router-link
+          v-if="isAdmin"
+          to="/formcommission"
+          class="menu-item"
+          active-class="active"
+        >
+          <span class="menu-icon">👥</span>
+          <span class="menu-text">Сформировать комиссию</span>
+        </router-link>
+
+        <router-link
+          v-if="isAdmin"
           to="/projectschedule"
           class="menu-item"
           active-class="active"
@@ -61,12 +70,8 @@
           <span class="menu-text">Расписание проектов</span>
         </router-link>
 
-        <!-- <router-link to="/protocollist" class="menu-item" active-class="active">
-          <span class="menu-icon">📋</span>
-          <span class="menu-text">Утверждение протоколов</span>
-        </router-link> -->
-
         <router-link
+          v-if="isAdmin"
           to="/archiveprotocols"
           class="menu-item"
           active-class="active"
@@ -120,7 +125,8 @@ export default {
       }`.trim();
     },
     isAdmin() {
-      return this.secretary && this.secretary.ID === 1;
+      // Проверка по логину (убедитесь, что поле называется именно Login)
+      return this.secretary && this.secretary.login === "admin";
     },
   },
 
