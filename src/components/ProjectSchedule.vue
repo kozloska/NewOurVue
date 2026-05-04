@@ -715,7 +715,6 @@
 </template>
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from "vue";
-// ✅ Заменяем axios на централизованный api-инстанс
 import api from "@/services/api";
 import {
   CalendarIcon,
@@ -1046,17 +1045,13 @@ const clearSpecializationFilter = () => {
   applySpecializationFilter();
 };
 
-// === API LOADERS ===
-// ✅ Функция getApiBaseUrl() больше не нужна — baseURL настроен в api.js
-
 const loadSpecializations = async () => {
   try {
-    // ✅ Заменено: axios + getApiBaseUrl() → api + относительный путь
     const r = await api.get("/api/specializations/", {
       params: {
         page_size: 100,
         Status: true,
-        signal: abortController.value?.signal, // ✅ signal поддерживается axios/api
+        signal: abortController.value?.signal,
       },
     });
     const d = r.data.results || r.data;
