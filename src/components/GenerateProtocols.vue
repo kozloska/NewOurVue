@@ -135,7 +135,6 @@
             <!-- Раскрывающаяся часть проекта -->
             <div v-if="expandedProjects[project.ID]" class="project-content">
               <!-- Секция студентов -->
-              <!-- Секция студентов -->
               <div class="students-section">
                 <div class="section-header">
                   <div class="section-icon">👥</div>
@@ -154,6 +153,7 @@
                   Нет студентов в проекте
                 </div>
                 <div v-else class="students-list">
+                  <!-- ✅ ЦИКЛ ПО СТУДЕНТАМ - ВСЁ ВНУТРИ ЭТОГО DIV -->
                   <div
                     v-for="student in students[project.ID]"
                     :key="student.ID"
@@ -209,7 +209,59 @@
                           </div>
                         </div>
                       </div>
+
+                      <!-- ✅ === НОВЫЙ БЛОК: Выбор квалификации (ВНУТРИ цикла!) === -->
+                      <div
+                        class="student-qualification"
+                        v-if="!project.isApproved"
+                      >
+                        <label class="qualification-label">Квалификация:</label>
+                        <div class="qualification-select-wrapper">
+                          <select
+                            v-model="selectedQualifications[student.ID]"
+                            class="qualification-select"
+                            :disabled="
+                              loadingQualifications[getSpecId(student)]
+                            "
+                          >
+                            <option value="">Не выбрана</option>
+                            <option
+                              v-for="qual in getQualificationsForStudent(
+                                student
+                              )"
+                              :key="qual.ID"
+                              :value="qual.ID"
+                            >
+                              {{ qual.Name }}
+                            </option>
+                          </select>
+                          <span
+                            v-if="loadingQualifications[getSpecId(student)]"
+                            class="loading-qual-mini"
+                          >
+                            ⏳
+                          </span>
+                        </div>
+                      </div>
+
+                      <!-- После утверждения показываем сохранённую квалификацию -->
+                      <div
+                        v-else-if="student.ID_Qualification"
+                        class="student-qualification-approved"
+                      >
+                        <span class="qualification-badge">
+                          🎓
+                          {{
+                            getQualificationName(
+                              student.ID_Qualification,
+                              student
+                            )
+                          }}
+                        </span>
+                      </div>
                     </div>
+                    <!-- /.student-info -->
+
                     <!-- ✅ Кнопки действий для студента -->
                     <div class="student-actions">
                       <!-- Кнопка DOCX (доступна после распределения вопросов) -->
@@ -243,10 +295,13 @@
                       </span>
                     </div>
                   </div>
+                  <!-- ✅ ЗАКРЫВАЮЩИЙ DIV .student-item -->
                 </div>
+                <!-- /.students-list -->
               </div>
+              <!-- /.students-section -->
 
-              <!-- Секция вопросов -->
+              <!-- Секция вопросов (остается на уровне проекта, не внутри студента) -->
               <div class="questions-section">
                 <div class="section-header">
                   <div class="section-icon">❓</div>
@@ -334,10 +389,13 @@
                   </div>
                 </div>
               </div>
+              <!-- /.questions-section -->
             </div>
+            <!-- /.project-content -->
+
             <!-- Кнопки действий проекта -->
             <div class="project-actions">
-              <!-- Кнопка: Распределить вопросы (показывается, если вопросы ещё не распределены) -->
+              <!-- Кнопка: Распределить вопросы -->
               <button
                 v-if="!project.questionsDistributed"
                 @click="distributeQuestionsForProject(project)"
@@ -359,7 +417,7 @@
 
               <!-- ✅ Кнопки после распределения вопросов -->
               <template v-else>
-                <!-- Скачать все протоколы (доступна всегда после распределения) -->
+                <!-- Скачать все протоколы -->
                 <button
                   @click="generateAllDocx(project)"
                   class="generate-all-docx-button"
@@ -377,7 +435,7 @@
                   }}
                 </button>
 
-                <!-- Утвердить проект (исчезает после утверждения) -->
+                <!-- Утвердить проект -->
                 <button
                   v-if="!project.isApproved"
                   @click="approveProject(project)"
@@ -398,10 +456,15 @@
                 </button>
               </template>
             </div>
+            <!-- /.project-actions -->
           </div>
+          <!-- /.project-card -->
         </div>
+        <!-- /.project-cards -->
       </div>
+      <!-- /.projects-list -->
     </div>
+    <!-- /.projects-container -->
 
     <!-- Модальное окно текста проекта -->
     <div
@@ -479,6 +542,9 @@ export default {
       selectedProjectText: "",
       expandedProjects: {},
       templateBuffer: null,
+      qualifications: {}, // qualifications[specId] = массив квалификаций
+      loadingQualifications: {}, // loadingQualifications[specId] = boolean
+      selectedQualifications: {}, // selectedQualifications[studentId] = qualificationId (или null)
     };
   },
   mounted() {
@@ -509,6 +575,47 @@ export default {
       } catch (error) {
         console.error("Ошибка загрузки шаблона:", error);
         this.errorMessage = "Не удалось загрузить шаблон документа";
+      }
+    },
+
+    async loadQualificationsForSpecialization(specializationId) {
+      if (!specializationId || this.qualifications[specializationId]) return;
+
+      this.loadingQualifications[specializationId] = true;
+      try {
+        const response = await api.get("/api/qualifications/", {
+          params: { ID_Specialization: specializationId },
+        });
+        this.qualifications[specializationId] = response.data;
+      } catch (error) {
+        console.error(
+          `Ошибка загрузки квалификаций для специализации ${specializationId}:`,
+          error
+        );
+      } finally {
+        this.loadingQualifications[specializationId] = false;
+      }
+    },
+
+    // === ВСПОМОГАТЕЛЬНЫЙ МЕТОД: получить квалификации для студента ===
+    getQualificationsForStudent(student) {
+      const specId = student.ID_Specialization?.ID || student.ID_Specialization;
+      return specId ? this.qualifications[specId] || [] : [];
+    },
+
+    // === ОБНОВЛЕНИЕ КВАЛИФИКАЦИИ СТУДЕНТА (отдельный вызов) ===
+    async updateStudentQualification(studentId, qualificationId) {
+      try {
+        await api.patch(`/api/students/${studentId}/`, {
+          ID_Qualification: qualificationId || null, // null если не выбрана
+        });
+        return true;
+      } catch (error) {
+        console.error(
+          `Ошибка обновления квалификации студента ${studentId}:`,
+          error
+        );
+        return false;
       }
     },
 
@@ -598,7 +705,24 @@ export default {
 
         // ✅ Фильтруем только студентов с оценкой
         const studentsWithGrade = students.filter((s) => s.grade);
+        const specIds = [
+          ...new Set(
+            studentsWithGrade
+              .map((s) => s.ID_Specialization?.ID || s.ID_Specialization)
+              .filter((id) => id)
+          ),
+        ];
 
+        for (const specId of specIds) {
+          await this.loadQualificationsForSpecialization(specId);
+        }
+
+        // === НОВОЕ: инициализируем выбранные квалификации из данных студента ===
+        for (const student of studentsWithGrade) {
+          if (student.ID_Qualification) {
+            this.selectedQualifications[student.ID] = student.ID_Qualification;
+          }
+        }
         for (const student of studentsWithGrade) {
           try {
             const protocolResponse = await api.get("/api/protocols/", {
@@ -689,7 +813,7 @@ export default {
         // Проверяем, что у ВСЕХ студентов протоколы имеют Status: true
         const checks = students.map(async (student) => {
           try {
-            const res = await api.get("/protocols/", {
+            const res = await api.get("/api/protocols/", {
               params: {
                 ID_Student: student.ID,
                 ID_DefenseSchedule: this.selectedDefense,
@@ -753,7 +877,18 @@ export default {
         this.loadProjects();
       }
     },
+    // === ВСПОМОГАТЕЛЬНЫЙ МЕТОД: получить название квалификации ===
+    getQualificationName(qualificationId, student) {
+      if (!qualificationId) return "";
+      // Если это объект (уже загружен)
+      if (typeof qualificationId === "object") return qualificationId.Name;
 
+      // Ищем в загруженных квалификациях
+      const specId = student.ID_Specialization?.ID || student.ID_Specialization;
+      const quals = this.qualifications[specId] || [];
+      const qual = quals.find((q) => q.ID === qualificationId);
+      return qual?.Name || "Загрузка...";
+    },
     // === Форматирование ===
     formatDateTime(dateTimeStr) {
       if (!dateTimeStr) return "";
@@ -792,10 +927,10 @@ export default {
       const parts = timeStr.split(":");
       return { hours: parts[0] || "00", minutes: parts[1] || "00" };
     },
-
     formatDateTimeForDoc(dateTimeStr) {
       if (!dateTimeStr) return "Не указана";
       const date = new Date(dateTimeStr);
+
       const months = [
         "января",
         "февраля",
@@ -810,7 +945,11 @@ export default {
         "ноября",
         "декабря",
       ];
-      return `${date.getDate()} ${months[date.getMonth()]}`;
+
+      // ✅ Добавляем год и "г." в конце
+      return `${date.getDate()} ${
+        months[date.getMonth()]
+      } ${date.getFullYear()} г.`;
     },
 
     truncateText(text, maxLength) {
@@ -853,6 +992,11 @@ export default {
           this.expandedProjects[project.ID] = false;
         }
       });
+    },
+
+    getSpecId(student) {
+      const spec = student?.ID_Specialization;
+      return spec?.ID ?? spec ?? null;
     },
 
     showProjectText(project) {
@@ -1002,7 +1146,7 @@ export default {
             if (a.q1) update.ID_Question = a.q1;
             if (a.q2) update.ID_Question2 = a.q2;
             if (Object.keys(update).length > 0) {
-              await api.patch(`/protocols/${proto.ID}/`, update);
+              await api.patch(`/api/protocols/${proto.ID}/`, update);
             }
           }
         }
@@ -1047,7 +1191,7 @@ export default {
 
       try {
         // Находим протокол студента
-        const protoRes = await api.get("/protocols/", {
+        const protoRes = await api.get("/api/protocols/", {
           params: {
             ID_Student: student.ID,
             ID_DefenseSchedule: this.selectedDefense,
@@ -1083,7 +1227,9 @@ export default {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `Протокол_${student.ID}_${student.Surname}.docx`;
+        link.download = `Протокол_${
+          protocol.Number || protocol.ID
+        }_${templateData.student.replace(/\s+/g, "_")}.docx`;
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -1156,21 +1302,29 @@ export default {
       const endTime = this.parseTime(protocol.DefenseEndTime);
       const dateTime = this.formatDateTimeForDoc(defenseSchedule?.DateTime);
 
-      // Загрузка состава комиссии
+      // === Загрузка состава комиссии (ИСПРАВЛЕННЫЙ ВАРИАНТ) ===
       let commissionMembers = [];
       if (commission?.ID) {
         try {
-          const formData = new FormData();
-          formData.append("id_commission", commission.ID);
-          const res = await api.post("/api/commission_composition/", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
-          commissionMembers = res.data;
+          // ✅ Запрос к списку с фильтром по ID комиссии
+          // Эндпоинт: /api/composition/?commission_id=5
+          const response = await api.get(
+            `/api/commission_compositions/?commission_id=${commission.ID}`
+          );
+
+          // DRF по умолчанию возвращает "плоский" список (массив),
+          // но на всякий случай проверяем тип данных
+          commissionMembers = Array.isArray(response.data)
+            ? response.data
+            : response.data.results || []; // Если используется пагинация
+
+          // ✅ Если нужны только данные участников (без роли и лишнего), можно "вытащить" их:
+          // commissionMembers = commissionMembers.map(item => item.ID_Member);
         } catch (e) {
-          console.error("Ошибка загрузки комиссии:", e);
+          console.error("Ошибка загрузки состава комиссии:", e);
+          commissionMembers = []; // Сбрасываем при ошибке
         }
       }
-
       const chairman = commissionMembers.find((m) => m.Role === "Председатель");
       const secretary = commissionMembers.find((m) => m.Role === "Секретарь");
       const members = commissionMembers.filter(
@@ -1223,7 +1377,10 @@ export default {
         Title: project?.Title || "Не указан",
         supervisor: project?.Supervisor || "Не указан",
         grade: protocol.Grade || "Не указана",
-        qualification: specialization?.Qualification || "Не указана",
+        // В методе prepareTemplateData, внутри return:
+        qualification:
+          this.getQualificationName(student.ID_Qualification, student) ||
+          "Не указана",
         secretary: secretary
           ? this.getInitials(secretary.ID_Member)
           : "Не указан",
@@ -1256,6 +1413,20 @@ export default {
       this.clearMessages();
 
       try {
+        for (const student of students) {
+          const qualId = this.selectedQualifications[student.ID];
+          // Обновляем только если квалификация изменена или выбрана впервые
+          if (qualId !== undefined && qualId !== student.ID_Qualification) {
+            const success = await this.updateStudentQualification(
+              student.ID,
+              qualId
+            );
+            if (success) {
+              // Обновляем локально, чтобы отобразить в интерфейсе
+              student.ID_Qualification = qualId;
+            }
+          }
+        }
         // ✅ Последовательное утверждение каждого протокола
         for (const student of students) {
           try {
@@ -2094,5 +2265,70 @@ h5 {
   display: flex;
   gap: 0.5rem;
   margin-left: 1rem;
+}
+/* === Стили для выбора квалификации === */
+.student-qualification {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.qualification-label {
+  display: block;
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.qualification-select-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.qualification-select {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.25rem;
+  font-size: 0.85rem;
+  background-color: white;
+  color: #1e293b;
+  transition: border-color 0.2s;
+}
+
+.qualification-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.qualification-select:disabled {
+  background-color: #f8fafc;
+  cursor: not-allowed;
+  color: #94a3b8;
+}
+
+.loading-qual-mini {
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+/* Бейдж утверждённой квалификации */
+.student-qualification-approved {
+  margin-top: 0.75rem;
+}
+
+.qualification-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.5rem;
+  background-color: #dbeafe;
+  color: #1e40af;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 </style>

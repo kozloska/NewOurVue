@@ -2,44 +2,103 @@
   <div class="archive-container">
     <div class="archive-header">
       <h1>Архив протоколов</h1>
-      <div class="header-controls">
+
+      <!-- Панель управления и фильтров -->
+      <div class="controls-wrapper">
         <div class="search-box">
+          <SearchIcon class="search-icon" />
           <input
             v-model="searchQuery"
+            @input="handleSearchInput"
             type="text"
             placeholder="Поиск по ФИО студента..."
             class="search-input"
           />
-          <SearchIcon class="search-icon" />
-        </div>
-        <div class="filter-controls">
-          <select v-model="selectedYear" class="year-filter">
-            <option value="">Все годы</option>
-            <option v-for="year in availableYears" :key="year" :value="year">
-              {{ year }}
-            </option>
-          </select>
-          <select
-            v-model="selectedSpecialization"
-            class="specialization-filter"
+          <button
+            v-if="searchQuery"
+            @click="searchQuery = ''"
+            class="clear-input-btn"
+            title="Очистить поиск"
           >
-            <option value="">Все специализации</option>
-            <option
-              v-for="spec in specializations"
-              :key="spec.ID"
-              :value="spec.ID"
-            >
-              {{ spec.Name }}
-            </option>
-          </select>
+            <XIcon class="btn-icon-small" />
+          </button>
+        </div>
+
+        <div class="filter-group">
+          <div class="select-wrapper">
+            <select v-model="selectedYear" class="filter-select">
+              <option value="">Все годы</option>
+              <option v-for="year in availableYears" :key="year" :value="year">
+                {{ year }}
+              </option>
+            </select>
+            <ChevronDownIcon class="select-arrow" />
+          </div>
+
+          <div class="select-wrapper">
+            <select v-model="selectedSpecialization" class="filter-select">
+              <option value="">Все специализации</option>
+              <option
+                v-for="spec in specializations"
+                :key="spec.ID"
+                :value="spec.ID"
+              >
+                {{ spec.Name }}
+              </option>
+            </select>
+            <ChevronDownIcon class="select-arrow" />
+          </div>
+
+          <button
+            v-if="activeFiltersCount > 0"
+            @click="clearAllFilters"
+            class="reset-btn"
+            title="Сбросить все фильтры"
+          >
+            <RotateCcwIcon class="btn-icon" />
+            <span class="btn-text">Сбросить</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Активные фильтры (Бейджи) -->
+      <div v-if="activeFiltersCount > 0" class="active-filters-bar">
+        <span class="filter-label">Активные фильтры:</span>
+
+        <div v-if="searchQuery" class="filter-badge">
+          <SearchIcon class="badge-icon" />
+          <span>"{{ searchQuery }}"</span>
+          <button @click="searchQuery = ''" class="badge-close">
+            <XIcon class="btn-icon-tiny" />
+          </button>
+        </div>
+
+        <div v-if="selectedYear" class="filter-badge">
+          <CalendarIcon class="badge-icon" />
+          <span>{{ selectedYear }}</span>
+          <button @click="selectedYear = ''" class="badge-close">
+            <XIcon class="btn-icon-tiny" />
+          </button>
+        </div>
+
+        <div v-if="selectedSpecialization" class="filter-badge">
+          <TagIcon class="badge-icon" />
+          <span>{{ getSpecializationName(selectedSpecialization) }}</span>
+          <button @click="selectedSpecialization = ''" class="badge-close">
+            <XIcon class="btn-icon-tiny" />
+          </button>
         </div>
       </div>
     </div>
 
+    <!-- Панель массовых действий -->
     <div v-if="selectedProtocols.length > 0" class="bulk-actions-panel">
       <div class="selected-info">
         <CheckSquareIcon class="selected-icon" />
-        <span>Выбрано протоколов: {{ selectedProtocols.length }}</span>
+        <span
+          >Выбрано протоколов:
+          <strong>{{ selectedProtocols.length }}</strong></span
+        >
       </div>
       <div class="bulk-buttons">
         <button @click="clearSelection" class="btn-secondary">
@@ -64,6 +123,7 @@
       </div>
     </div>
 
+    <!-- Прогресс бар генерации -->
     <div v-if="isGenerating" class="progress-container">
       <div class="progress-bar">
         <div
@@ -82,183 +142,225 @@
       </div>
     </div>
 
+    <!-- Основной контент таблицы или пустое состояние -->
     <div class="protocols-table-container">
-      <div class="table-controls">
-        <label class="select-all-checkbox">
-          <input
-            type="checkbox"
-            :checked="isAllSelected"
-            :indeterminate="isPartiallySelected"
-            @change="toggleSelectAll"
-          />
-          <span class="checkmark"></span>
-          Выбрать все на странице
-        </label>
-        <div class="table-info">
-          Всего протоколов: {{ filteredProtocols.length }}
+      <!-- Пустое состояние -->
+      <div v-if="filteredProtocols.length === 0" class="empty-state">
+        <div class="empty-icon-wrapper">
+          <FolderOpenIcon v-if="protocols.length > 0" class="empty-icon" />
+          <InboxIcon v-else class="empty-icon" />
         </div>
-      </div>
-
-      <div class="table-wrapper">
-        <table class="protocols-table">
-          <thead>
-            <tr>
-              <th class="checkbox-column">
-                <input
-                  type="checkbox"
-                  :checked="isAllSelected"
-                  :indeterminate="isPartiallySelected"
-                  @change="toggleSelectAll"
-                />
-              </th>
-              <th>№</th>
-              <th>ФИО студента</th>
-              <th>Группа</th>
-              <th>Специализация</th>
-              <th>Тема проекта</th>
-              <th>Оценка</th>
-              <th>Год</th>
-              <th>Дата защиты</th>
-              <th>Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="protocol in paginatedProtocols"
-              :key="protocol.ID"
-              :class="{
-                'selected-row': selectedProtocols.includes(protocol.ID),
-              }"
-            >
-              <td class="checkbox-column">
-                <label class="protocol-checkbox">
-                  <input
-                    type="checkbox"
-                    :value="protocol.ID"
-                    v-model="selectedProtocols"
-                  />
-                  <span class="checkmark"></span>
-                </label>
-              </td>
-              <td>{{ protocol.Number || protocol.ID }}</td>
-              <td class="student-name">
-                {{ getStudentFullName(protocol) }}
-              </td>
-              <td>{{ protocol.ID_Student?.ID_Group?.Name || "Не указана" }}</td>
-              <td class="specialization-cell">
-                {{
-                  protocol.ID_Student?.ID_Specialization?.Name || "Не указана"
-                }}
-              </td>
-              <td class="project-title">
-                {{ protocol.ID_Student?.ID_Project?.Title || "Не указана" }}
-              </td>
-              <td>
-                <span :class="['grade-badge', getGradeClass(protocol.Grade)]">
-                  {{ protocol.Grade || "Не оценено" }}
-                </span>
-              </td>
-              <td>{{ protocol.Year }}</td>
-              <td>
-                {{ formatDefenseDate(protocol.ID_DefenseSchedule?.DateTime) }}
-              </td>
-              <td class="actions-column">
-                <button
-                  @click="generateDocx(protocol)"
-                  :disabled="isGenerating || generatingDocx[protocol.ID]"
-                  class="btn-action"
-                  title="Сгенерировать протокол"
-                >
-                  <DownloadIcon class="action-icon" />
-                  {{
-                    generatingDocx[protocol.ID] ? "Генерируем..." : "Скачать"
-                  }}
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="pagination-container">
-        <div class="pagination-info">
-          Показано {{ startIndex + 1 }}-{{
-            Math.min(endIndex, filteredProtocols.length)
-          }}
-          из {{ filteredProtocols.length }}
-        </div>
-        <div class="pagination-controls">
-          <button
-            @click="currentPage = 1"
-            :disabled="currentPage === 1"
-            class="pagination-btn"
-          >
-            <ChevronsLeftIcon class="pagination-icon" />
-          </button>
-          <button
-            @click="currentPage--"
-            :disabled="currentPage === 1"
-            class="pagination-btn"
-          >
-            <ChevronLeftIcon class="pagination-icon" />
-          </button>
-          <span class="page-info">
-            Страница {{ currentPage }} из {{ totalPages }}
-          </span>
-          <button
-            @click="currentPage++"
-            :disabled="currentPage === totalPages"
-            class="pagination-btn"
-          >
-            <ChevronRightIcon class="pagination-icon" />
-          </button>
-          <button
-            @click="currentPage = totalPages"
-            :disabled="currentPage === totalPages"
-            class="pagination-btn"
-          >
-            <ChevronsRightIcon class="pagination-icon" />
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="notifications.length > 0" class="notifications">
-      <div
-        v-for="notification in notifications"
-        :key="notification.id"
-        :class="['notification', `notification-${notification.type}`]"
-      >
-        <CheckCircleIcon
-          v-if="notification.type === 'success'"
-          class="notification-icon"
-        />
-        <AlertCircleIcon
-          v-if="notification.type === 'error'"
-          class="notification-icon"
-        />
-        <InfoIcon
-          v-if="notification.type === 'info'"
-          class="notification-icon"
-        />
-        <span>{{ notification.message }}</span>
+        <h3 v-if="protocols.length === 0">Архив пуст</h3>
+        <h3 v-else>Ничего не найдено</h3>
+        <p v-if="protocols.length === 0">
+          В базе данных пока нет завершенных протоколов.
+        </p>
+        <p v-else>Попробуйте изменить параметры поиска или сбросить фильтры.</p>
         <button
-          @click="removeNotification(notification.id)"
-          class="notification-close"
+          v-if="activeFiltersCount > 0"
+          @click="clearAllFilters"
+          class="empty-action-btn"
         >
-          <XIcon class="close-icon" />
+          Сбросить фильтры
         </button>
       </div>
+
+      <!-- Таблица -->
+      <template v-else>
+        <div class="table-controls">
+          <label class="select-all-checkbox">
+            <input
+              type="checkbox"
+              :checked="isAllSelected"
+              :indeterminate="isPartiallySelected"
+              @change="toggleSelectAll"
+            />
+            <span class="checkmark"></span>
+            Выбрать все на странице
+          </label>
+          <div class="table-info">
+            Показано {{ startIndex + 1 }}-{{
+              Math.min(endIndex, filteredProtocols.length)
+            }}
+            из {{ filteredProtocols.length }}
+          </div>
+        </div>
+
+        <div class="table-wrapper">
+          <table class="protocols-table">
+            <thead>
+              <tr>
+                <th class="checkbox-column">
+                  <input
+                    type="checkbox"
+                    :checked="isAllSelected"
+                    :indeterminate="isPartiallySelected"
+                    @change="toggleSelectAll"
+                  />
+                </th>
+                <th>№</th>
+                <th>ФИО студента</th>
+                <th>Группа</th>
+                <th>Специализация</th>
+                <th>Тема проекта</th>
+                <th>Оценка</th>
+                <th>Год</th>
+                <th>Дата защиты</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="protocol in paginatedProtocols"
+                :key="protocol.ID"
+                :class="{
+                  'selected-row': selectedProtocols.includes(protocol.ID),
+                }"
+              >
+                <td class="checkbox-column">
+                  <label class="protocol-checkbox">
+                    <input
+                      type="checkbox"
+                      :value="protocol.ID"
+                      v-model="selectedProtocols"
+                    />
+                    <span class="checkmark"></span>
+                  </label>
+                </td>
+                <td>{{ protocol.Number || protocol.ID }}</td>
+                <td class="student-name">
+                  {{ getStudentFullName(protocol) }}
+                </td>
+                <td>{{ protocol.ID_Student?.ID_Group?.Name || "—" }}</td>
+
+                <td
+                  class="specialization-cell"
+                  :title="protocol.ID_Student?.ID_Specialization?.Name"
+                >
+                  {{ protocol.ID_Student?.ID_Specialization?.Name || "—" }}
+                </td>
+
+                <td
+                  class="project-title"
+                  :title="protocol.ID_Student?.ID_Project?.Title"
+                >
+                  {{ protocol.ID_Student?.ID_Project?.Title || "—" }}
+                </td>
+
+                <td>
+                  <span :class="['grade-badge', getGradeClass(protocol.Grade)]">
+                    {{ protocol.Grade || "—" }}
+                  </span>
+                </td>
+                <td>{{ protocol.Year }}</td>
+                <td>
+                  {{ formatDefenseDate(protocol.ID_DefenseSchedule?.DateTime) }}
+                </td>
+                <td class="actions-column">
+                  <button
+                    @click="generateDocx(protocol)"
+                    :disabled="isGenerating || generatingDocx[protocol.ID]"
+                    class="btn-action"
+                    title="Сгенерировать протокол"
+                  >
+                    <DownloadIcon
+                      v-if="!generatingDocx[protocol.ID]"
+                      class="action-icon"
+                    />
+                    <Loader2Icon v-else class="action-icon spinning" />
+                    {{ generatingDocx[protocol.ID] ? "..." : "" }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Пагинация -->
+        <div class="pagination-container">
+          <div class="pagination-info">
+            Страница {{ currentPage }} из {{ totalPages }}
+          </div>
+          <div class="pagination-controls">
+            <button
+              @click="currentPage = 1"
+              :disabled="currentPage === 1"
+              class="pagination-btn"
+              title="В начало"
+            >
+              <ChevronsLeftIcon class="pagination-icon" />
+            </button>
+            <button
+              @click="currentPage--"
+              :disabled="currentPage === 1"
+              class="pagination-btn"
+              title="Назад"
+            >
+              <ChevronLeftIcon class="pagination-icon" />
+            </button>
+
+            <span class="page-numbers"> </span>
+
+            <button
+              @click="currentPage++"
+              :disabled="currentPage === totalPages"
+              class="pagination-btn"
+              title="Вперед"
+            >
+              <ChevronRightIcon class="pagination-icon" />
+            </button>
+            <button
+              @click="currentPage = totalPages"
+              :disabled="currentPage === totalPages"
+              class="pagination-btn"
+              title="В конец"
+            >
+              <ChevronsRightIcon class="pagination-icon" />
+            </button>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Уведомления -->
+    <div v-if="notifications.length > 0" class="notifications">
+      <transition-group name="slide">
+        <div
+          v-for="notification in notifications"
+          :key="notification.id"
+          :class="['notification', `notification-${notification.type}`]"
+        >
+          <CheckCircleIcon
+            v-if="notification.type === 'success'"
+            class="notification-icon"
+          />
+          <AlertCircleIcon
+            v-if="notification.type === 'error'"
+            class="notification-icon"
+          />
+          <InfoIcon
+            v-if="notification.type === 'info'"
+            class="notification-icon"
+          />
+          <span>{{ notification.message }}</span>
+          <button
+            @click="removeNotification(notification.id)"
+            class="notification-close"
+          >
+            <XIcon class="close-icon" />
+          </button>
+        </div>
+      </transition-group>
     </div>
   </div>
 </template>
-
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
-import axios from "axios";
+import api from "@/services/api";
 import Docxtemplater from "docxtemplater";
 import PizZip from "pizzip";
 import JSZip from "jszip";
+
 import {
   SearchIcon,
   CheckSquareIcon,
@@ -272,8 +374,16 @@ import {
   CheckCircleIcon,
   AlertCircleIcon,
   InfoIcon,
+  CalendarIcon,
+  TagIcon,
+  RotateCcwIcon,
+  FolderOpenIcon,
+  InboxIcon,
+  Loader2Icon,
+  ChevronDownIcon,
 } from "lucide-vue-next";
 
+// ==================== STATE ====================
 const protocols = ref([]);
 const specializations = ref([]);
 const selectedProtocols = ref([]);
@@ -288,6 +398,22 @@ const currentPage = ref(1);
 const itemsPerPage = ref(20);
 const generatingDocx = ref({});
 const templateBuffer = ref(null);
+
+// ✅ НОВЫЕ: Квалификации
+const qualifications = ref({}); // qualifications[specId] = массив квалификаций
+const loadingQualifications = ref({}); // loadingQualifications[specId] = boolean
+
+let searchTimeout = null;
+
+// ==================== COMPUTED ====================
+
+const activeFiltersCount = computed(() => {
+  let count = 0;
+  if (searchQuery.value && searchQuery.value.trim()) count++;
+  if (selectedYear.value) count++;
+  if (selectedSpecialization.value) count++;
+  return count;
+});
 
 const filteredProtocols = computed(() => {
   let filtered = protocols.value.filter((protocol) => protocol.Status === true);
@@ -329,7 +455,7 @@ const availableYears = computed(() => {
 });
 
 const totalPages = computed(() =>
-  Math.ceil(filteredProtocols.value.length / itemsPerPage.value)
+  Math.max(1, Math.ceil(filteredProtocols.value.length / itemsPerPage.value))
 );
 
 const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage.value);
@@ -355,15 +481,33 @@ const isPartiallySelected = computed(() => {
   );
 });
 
+// ==================== DATA LOADING ====================
+
 const loadProtocols = async () => {
   try {
-    const response = await axios.get("http://localhost:8000/api/protocols/", {
-      params: {
-        Status: true,
-        page_size: 1000,
-      },
+    const response = await api.get("/api/protocols/", {
+      params: { Status: true, page_size: 1000 },
     });
     protocols.value = response.data.results || response.data;
+
+    // ✅ Предзагрузка квалификаций для всех специализаций
+    const specIds = [
+      ...new Set(
+        protocols.value
+          .map(
+            (p) =>
+              p.ID_Student?.ID_Specialization?.ID ||
+              p.ID_Student?.ID_Specialization
+          )
+          .filter((id) => id)
+      ),
+    ];
+    for (const specId of specIds) {
+      if (!qualifications.value[specId]) {
+        await loadQualificationsForSpecialization(specId);
+      }
+    }
+
     console.log("Загружено протоколов:", protocols.value.length);
   } catch (error) {
     console.error("Ошибка загрузки протоколов:", error);
@@ -373,34 +517,76 @@ const loadProtocols = async () => {
 
 const loadSpecializations = async () => {
   try {
-    const response = await axios.get(
-      "http://localhost:8000/api/specializations/"
-    );
+    const response = await api.get("/api/specializations/");
     specializations.value = response.data;
-    console.log("Загружено специализаций:", specializations.value.length);
   } catch (error) {
     console.error("Ошибка загрузки специализаций:", error);
     addNotification("Ошибка загрузки специализаций", "error");
   }
 };
 
+// ✅ Загрузка квалификаций для специализации
+const loadQualificationsForSpecialization = async (specializationId) => {
+  if (!specializationId || qualifications.value[specializationId]) return;
+
+  loadingQualifications.value[specializationId] = true;
+  try {
+    const response = await api.get("/api/qualifications/", {
+      params: { ID_Specialization: specializationId },
+    });
+    qualifications.value[specializationId] = response.data;
+  } catch (error) {
+    console.error(
+      `Ошибка загрузки квалификаций для ${specializationId}:`,
+      error
+    );
+    qualifications.value[specializationId] = [];
+  } finally {
+    loadingQualifications.value[specializationId] = false;
+  }
+};
+
 const loadTemplate = async () => {
+  if (templateBuffer.value) return;
+
   try {
     const response = await fetch("/templates/test.docx");
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    // ✅ Важно: arrayBuffer(), а не .data
     templateBuffer.value = await response.arrayBuffer();
     console.log("Шаблон успешно загружен");
   } catch (error) {
     console.error("Ошибка загрузки шаблона:", error);
-    addNotification("Ошибка загрузки шаблона документа", "error");
+    addNotification(
+      "Ошибка загрузки шаблона документа. Проверьте путь /templates/test.docx",
+      "error"
+    );
   }
+};
+
+// ==================== ACTIONS ====================
+
+const handleSearchInput = () => {
+  currentPage.value = 1;
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {}, 300);
+};
+
+const clearAllFilters = () => {
+  searchQuery.value = "";
+  selectedYear.value = "";
+  selectedSpecialization.value = "";
+  currentPage.value = 1;
+  addNotification("Фильтры сброшены", "info");
+};
+
+const getSpecializationName = (id) => {
+  const spec = specializations.value.find((s) => s.ID === id);
+  return spec ? spec.Name : "Неизвестно";
 };
 
 const toggleSelectAll = () => {
   const currentPageIds = paginatedProtocols.value.map((p) => p.ID);
-
   if (isAllSelected.value) {
     selectedProtocols.value = selectedProtocols.value.filter(
       (id) => !currentPageIds.includes(id)
@@ -417,15 +603,18 @@ const clearSelection = () => {
   selectedProtocols.value = [];
 };
 
+// ==================== GENERATION LOGIC ====================
+
 const generateDocx = async (protocol) => {
   if (generatingDocx.value[protocol.ID]) return;
 
   if (!templateBuffer.value) {
     addNotification(
-      "Шаблон документа не загружен. Попробуйте перезагрузить страницу.",
-      "error"
+      "Шаблон документа ещё загружается или не найден.",
+      "warning"
     );
-    return;
+    await loadTemplate();
+    if (!templateBuffer.value) return;
   }
 
   generatingDocx.value[protocol.ID] = true;
@@ -450,28 +639,20 @@ const generateDocx = async (protocol) => {
     const blob = new Blob([buf], {
       type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute(
-      "download",
-      `Протокол_${
-        protocol.Number || protocol.ID
-      }_${templateData.student.replace(/\s+/g, "_")}.docx`
-    );
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+
+    const fileName = `Протокол_${
+      protocol.Number || protocol.ID
+    }_${templateData.student.replace(/\s+/g, "_")}.docx`;
+    saveAs(blob, fileName);
 
     addNotification(
-      `Протокол для ${getStudentFullName(protocol)} успешно сгенерирован`,
+      `Протокол для ${getStudentFullName(protocol)} создан`,
       "success"
     );
   } catch (error) {
     console.error("Ошибка генерации протокола:", error);
     addNotification(
-      `Ошибка при генерации протокола: ${error.message}`,
+      `Ошибка: ${error.message || "Не удалось создать файл"}`,
       "error"
     );
   } finally {
@@ -481,6 +662,12 @@ const generateDocx = async (protocol) => {
 
 const generateSelectedProtocols = async () => {
   if (selectedProtocols.value.length === 0) return;
+
+  if (!templateBuffer.value) {
+    addNotification("Шаблон не загружен. Повторите попытку.", "error");
+    await loadTemplate();
+    if (!templateBuffer.value) return;
+  }
 
   isGenerating.value = true;
   generationProgress.value = 0;
@@ -495,11 +682,6 @@ const generateSelectedProtocols = async () => {
         currentGeneratingStudent.value = getStudentFullName(protocol);
 
         try {
-          if (!templateBuffer.value) {
-            addNotification("Шаблон документа не загружен", "error");
-            continue;
-          }
-
           const templateData = await prepareTemplateData(protocol);
 
           const zip = new PizZip(templateBuffer.value);
@@ -526,9 +708,12 @@ const generateSelectedProtocols = async () => {
           });
 
           generationProgress.value++;
+          // Небольшая пауза для обработки браузером
+          await new Promise((resolve) => setTimeout(resolve, 200));
         } catch (error) {
+          console.error(error);
           addNotification(
-            `Ошибка генерации протокола для ${getStudentFullName(protocol)}`,
+            `Ошибка в протоколе ${getStudentFullName(protocol)}`,
             "error"
           );
         }
@@ -536,14 +721,13 @@ const generateSelectedProtocols = async () => {
     }
 
     if (generatedFiles.length > 0) {
-      if (typeof JSZip !== "undefined") {
-        await createZipArchive(generatedFiles);
+      if (generatedFiles.length === 1) {
+        saveAs(generatedFiles[0].blob, generatedFiles[0].filename);
       } else {
-        downloadFilesIndividually(generatedFiles);
+        await createZipArchive(generatedFiles);
       }
-
       addNotification(
-        `Успешно сгенерировано ${generatedFiles.length} протоколов`,
+        `Успешно сгенерировано ${generatedFiles.length} файлов`,
         "success"
       );
     }
@@ -554,6 +738,19 @@ const generateSelectedProtocols = async () => {
   }
 };
 
+const saveAs = (blob, filename) => {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
+// ==================== TEMPLATE DATA PREPARATION ====================
+
 const prepareTemplateData = async (protocol) => {
   const student = protocol.ID_Student;
   const project = student?.ID_Project;
@@ -563,82 +760,67 @@ const prepareTemplateData = async (protocol) => {
 
   const startTime = parseTime(protocol.DefenseStartTime);
   const endTime = parseTime(protocol.DefenseEndTime);
-  const dateTime = formatDateTime(defenseSchedule?.DateTime);
+  const dateTime = formatDateTimeForDoc(defenseSchedule?.DateTime);
 
+  // === Загрузка состава комиссии ===
   let commissionMembers = [];
-  let chairman = null;
-  let secretary = null;
-  let members = [];
-
-  if (commission?.members && commission.members.length > 0) {
-    commissionMembers = commission.members;
-  } else if (commission?.ID) {
+  if (commission?.ID) {
     try {
-      const formData = new FormData();
-      formData.append("id_commission", commission.ID);
-
-      const commissionResponse = await axios.post(
-        "http://localhost:8000/api/commission_composition/",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
+      const response = await api.get(
+        `/api/commission_compositions/?commission_id=${commission.ID}`
       );
-
-      commissionMembers = commissionResponse.data;
+      commissionMembers = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
     } catch (error) {
       console.error("Ошибка загрузки состава комиссии:", error);
+      commissionMembers = [];
     }
   }
 
-  if (commissionMembers.length > 0) {
-    chairman = commissionMembers.find((m) => m.Role === "Председатель");
-    secretary = commissionMembers.find((m) => m.Role === "Секретарь");
-    members = commissionMembers.filter(
-      (m) =>
-        m.Role === "Член аттестационной комиссии" ||
-        m.Role === "Член аттестационной комиссии "
-    );
-  }
+  const chairman = commissionMembers.find((m) => m.Role === "Председатель");
+  const secretary = commissionMembers.find((m) => m.Role === "Секретарь");
+  const members = commissionMembers.filter(
+    (m) =>
+      m.Role === "Член аттестационной комиссии" ||
+      m.Role === "Член аттестационной комиссии "
+  );
 
-  let question1 = " ";
-  let question2 = " ";
-
+  // Загрузка вопросов
+  let question1 = " ",
+    question2 = " ";
   if (protocol.ID_Question) {
     try {
-      const q1Response = await axios.get(
-        `http://localhost:8000/api/questions/${protocol.ID_Question}/`
-      );
-      question1 = q1Response.data.Text;
-    } catch (error) {
-      console.error("Ошибка загрузки первого вопроса:", error);
+      const q1 = await api.get(`/api/questions/${protocol.ID_Question}/`);
+      question1 = q1.data.Text;
+    } catch (e) {
+      console.error("Ошибка вопроса 1:", e);
     }
   }
-
   if (protocol.ID_Question2) {
     try {
-      const q2Response = await axios.get(
-        `http://localhost:8000/api/questions/${protocol.ID_Question2}/`
-      );
-      question2 = q2Response.data.Text;
-    } catch (error) {
-      console.error("Ошибка загрузки второго вопроса:", error);
+      const q2 = await api.get(`/api/questions/${protocol.ID_Question2}/`);
+      question2 = q2.data.Text;
+    } catch (e) {
+      console.error("Ошибка вопроса 2:", e);
     }
   }
 
+  // Склонение ФИО
   let studentDative = getFullName(student);
   try {
-    const dativeResponse = await axios.post(
-      "http://localhost:8000/api/fio_to_dative/",
-      {
-        fio: getFullName(student),
-      }
-    );
+    const dativeResponse = await api.post("/api/fio_to_dative/", {
+      fio: getFullName(student),
+    });
     studentDative = dativeResponse.data.dative_fio;
   } catch (error) {
     console.error("Ошибка склонения ФИО:", error);
+  }
+
+  // ✅ Загружаем квалификации для специализации студента, если нужно
+  const specId = student?.ID_Specialization?.ID || student?.ID_Specialization;
+  if (specId && !qualifications.value[specId]) {
+    await loadQualificationsForSpecialization(specId);
   }
 
   const membersForSignatures = members.map((member) => ({
@@ -658,7 +840,8 @@ const prepareTemplateData = async (protocol) => {
     Title: project?.Title || "Не указан",
     supervisor: project?.Supervisor || "Не указан",
     grade: protocol.Grade || "Не указана",
-    qualification: specialization?.Qualification || "Не указана",
+    qualification:
+      getQualificationName(student?.ID_Qualification, student) || "Бакалавр",
     secretary: secretary ? getInitials(secretary.ID_Member) : "Не указан",
     question1: question1,
     question2: question2,
@@ -667,49 +850,30 @@ const prepareTemplateData = async (protocol) => {
   };
 };
 
-const createZipArchive = async (files) => {
-  const zip = new JSZip();
+// ==================== HELPERS ====================
 
-  files.forEach((file) => {
-    zip.file(file.filename, file.blob);
-  });
+const getQualificationName = (qualificationId, student) => {
+  if (!qualificationId) return "Не указана";
 
-  const zipBlob = await zip.generateAsync({ type: "blob" });
-  const url = window.URL.createObjectURL(zipBlob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `Протоколы_архив_${
-    new Date().toISOString().split("T")[0]
-  }.zip`;
-  link.click();
-  window.URL.revokeObjectURL(url);
+  // Если это объект с полем Name
+  if (typeof qualificationId === "object" && qualificationId.Name) {
+    return qualificationId.Name;
+  }
+
+  // Если это просто ID — ищем в загруженных квалификациях
+  const specId = student?.ID_Specialization?.ID || student?.ID_Specialization;
+  if (specId && qualifications.value[specId]) {
+    const qual = qualifications.value[specId].find(
+      (q) => q.ID === qualificationId
+    );
+    if (qual) return qual.Name;
+  }
+
+  return "Бакалавр";
 };
 
-const downloadFilesIndividually = (files) => {
-  files.forEach((file, index) => {
-    setTimeout(() => {
-      const url = window.URL.createObjectURL(file.blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = file.filename;
-      link.click();
-      window.URL.revokeObjectURL(url);
-    }, index * 500);
-  });
-};
-
-const parseTime = (timeStr) => {
-  if (!timeStr) return { hours: "00", minutes: "00" };
-  const parts = timeStr.split(":");
-  return {
-    hours: parts[0] || "00",
-    minutes: parts[1] || "00",
-  };
-};
-
-const formatDateTime = (dateTimeStr) => {
-  if (!dateTimeStr) return "Не указана";
-
+const formatDateTimeForDoc = (dateTimeStr) => {
+  if (!dateTimeStr) return "«__» ______ 20__ г.";
   const date = new Date(dateTimeStr);
   const months = [
     "января",
@@ -725,89 +889,89 @@ const formatDateTime = (dateTimeStr) => {
     "ноября",
     "декабря",
   ];
+  return `${date.getDate()} ${
+    months[date.getMonth()]
+  } ${date.getFullYear()} г.`;
+};
 
-  const day = date.getDate();
-  const month = months[date.getMonth()];
+// Форматирование даты защиты для отображения в таблице (используется в шаблоне)
+const formatDefenseDate = (dateTimeStr) => {
+  if (!dateTimeStr) return "—";
+  const date = new Date(dateTimeStr);
+  return date.toLocaleDateString("ru-RU");
+};
+const createZipArchive = async (files) => {
+  const zip = new JSZip();
+  files.forEach((file) => {
+    zip.file(file.filename, file.blob);
+  });
+  const zipBlob = await zip.generateAsync({ type: "blob" });
+  saveAs(
+    zipBlob,
+    `Протоколы_Архив_${new Date().toISOString().split("T")[0]}.zip`
+  );
+};
 
-  return `${day} ${month}`;
+const parseTime = (timeStr) => {
+  if (!timeStr) return { hours: "00", minutes: "00" };
+  const parts = timeStr.split(":");
+  return {
+    hours: parts[0].padStart(2, "0"),
+    minutes: parts[1] ? parts[1].padStart(2, "0") : "00",
+  };
 };
 
 const getFullName = (person) => {
-  if (!person) return "Не указан";
+  if (!person) return "Фамилия И.О.";
   return `${person.Surname || ""} ${person.Name || ""} ${
     person.Patronymic || ""
   }`.trim();
 };
 
 const getStudentFullName = (protocol) => {
-  if (!protocol.ID_Student) return "Неизвестный студент";
+  if (!protocol.ID_Student) return "Студент удален";
   return getFullName(protocol.ID_Student);
 };
 
-const formatDefenseDate = (dateTimeStr) => {
-  if (!dateTimeStr) return "Не указана";
-
-  const date = new Date(dateTimeStr);
-  const day = date.getDate().toString().padStart(2, "0");
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const year = date.getFullYear();
-
-  return `${day}.${month}.${year}`;
-};
-
 const getGradeClass = (grade) => {
-  const gradeMap = {
-    5: "grade-excellent",
-    Отлично: "grade-excellent",
-    4: "grade-good",
-    Хорошо: "grade-good",
-    3: "grade-satisfactory",
-    Удовлетворительно: "grade-satisfactory",
-    2: "grade-unsatisfactory",
-    Неудовлетворительно: "grade-unsatisfactory",
-  };
-  return gradeMap[grade] || "grade-unknown";
+  if (!grade) return "grade-unknown";
+  const strGrade = String(grade).toLowerCase();
+  if (strGrade === "5" || strGrade === "отлично") return "grade-excellent";
+  if (strGrade === "4" || strGrade === "хорошо") return "grade-good";
+  if (strGrade === "3" || strGrade === "удовлетворительно")
+    return "grade-satisfactory";
+  return "grade-unsatisfactory";
 };
 
 const getInitials = (person) => {
-  if (!person) return "Не указан";
-
+  if (!person) return "";
   const surname = person.Surname || "";
-  const name = person.Name || "";
-  const patronymic = person.Patronymic || "";
-
-  const nameInitial = name ? name.charAt(0).toUpperCase() + "." : "";
-  const patronymicInitial = patronymic
-    ? patronymic.charAt(0).toUpperCase() + "."
+  const name = person.Name ? person.Name.charAt(0).toUpperCase() + "." : "";
+  const patronymic = person.Patronymic
+    ? person.Patronymic.charAt(0).toUpperCase() + "."
     : "";
-
-  return `${surname} ${nameInitial}${patronymicInitial}`.trim();
+  return `${surname} ${name}${patronymic}`.trim();
 };
 
 const capitalizeFirstLetter = (str) => {
-  if (!str) return str;
+  if (!str) return "";
   return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
-const addNotification = (message, type = "info") => {
-  const notification = {
-    id: Date.now(),
-    message,
-    type,
-  };
-  notifications.value.push(notification);
+// ==================== NOTIFICATIONS ====================
 
-  setTimeout(() => {
-    removeNotification(notification.id);
-  }, 5000);
+const addNotification = (message, type = "info") => {
+  const id = Date.now();
+  notifications.value.push({ id, message, type });
+  setTimeout(() => removeNotification(id), 5000);
 };
 
 const removeNotification = (id) => {
   const index = notifications.value.findIndex((n) => n.id === id);
-  if (index > -1) {
-    notifications.value.splice(index, 1);
-  }
+  if (index > -1) notifications.value.splice(index, 1);
 };
+
+// ==================== WATCHERS & MOUNTED ====================
 
 watch([searchQuery, selectedYear, selectedSpecialization], () => {
   selectedProtocols.value = [];
@@ -820,12 +984,13 @@ onMounted(() => {
   loadTemplate();
 });
 </script>
-
 <style scoped>
+/* ==================== ОСНОВНОЙ КОНТЕЙНЕР ==================== */
 .archive-container {
   padding: 2rem;
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
 }
 
 .archive-header {
@@ -833,37 +998,40 @@ onMounted(() => {
 }
 
 .archive-header h1 {
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 1rem;
+  color: #111827;
+  margin-bottom: 1.5rem;
 }
 
-.header-controls {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 1.5rem;
-  align-items: flex-start;
-  width: 100%;
+/* ==================== ПАНЕЛЬ УПРАВЛЕНИЯ ==================== */
+.controls-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
 }
 
 .search-box {
   position: relative;
-  width: 100%;
-  max-width: 400px;
-  min-width: 250px;
+  flex: 1;
+  min-width: 280px;
+  max-width: 500px;
 }
 
 .search-input {
   width: 100%;
-  padding: 0.75rem 1rem 0.75rem 2.5rem;
+  padding: 0.625rem 2.5rem 0.625rem 2.5rem;
   border: 1px solid #d1d5db;
   border-radius: 0.5rem;
-  font-size: 0.875rem;
-  background-color: white;
-  color: #1f2937;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  box-sizing: border-box;
+  font-size: 0.9rem;
+  transition: all 0.2s;
 }
 
 .search-input:focus {
@@ -872,13 +1040,61 @@ onMounted(() => {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.search-input::placeholder {
-  color: #9ca3af;
-}
-
 .search-icon {
   position: absolute;
   left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.1rem;
+  height: 1.1rem;
+  color: #9ca3af;
+}
+
+.clear-input-btn {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 0.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-input-btn:hover {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.filter-group {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.select-wrapper {
+  position: relative;
+}
+
+.filter-select {
+  appearance: none;
+  padding: 0.625rem 2.5rem 0.625rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  background: white;
+  font-size: 0.9rem;
+  cursor: pointer;
+  min-width: 160px;
+}
+
+.select-arrow {
+  position: absolute;
+  right: 0.75rem;
   top: 50%;
   transform: translateY(-50%);
   width: 1rem;
@@ -887,69 +1103,113 @@ onMounted(() => {
   pointer-events: none;
 }
 
-.filter-controls {
+.reset-btn {
   display: flex;
-  gap: 0.75rem;
-  flex-shrink: 0;
-  align-items: flex-start;
-}
-
-.year-filter,
-.specialization-filter {
-  padding: 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  width: 160px;
-  flex-shrink: 0;
-  background-color: white;
-}
-
-.bulk-actions-panel {
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
   background: #f3f4f6;
   border: 1px solid #d1d5db;
   border-radius: 0.5rem;
+  color: #374151;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reset-btn:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.active-filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  align-items: center;
+}
+
+.filter-label {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-right: 0.5rem;
+}
+
+.filter-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.5rem 0.25rem 0.4rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  color: #1e40af;
+}
+
+.badge-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.badge-close {
+  background: transparent;
+  border: none;
+  color: #60a5fa;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.1rem;
+  border-radius: 50%;
+}
+
+.badge-close:hover {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+/* ==================== МАССОВЫЕ ДЕЙСТВИЯ ==================== */
+.bulk-actions-panel {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 0.5rem;
   padding: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
+  animation: slideDown 0.3s ease-out;
 }
 
 .selected-info {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  color: #166534;
   font-weight: 500;
-  color: #374151;
-}
-
-.selected-icon {
-  width: 1.25rem;
-  height: 1.25rem;
-  color: #059669;
 }
 
 .bulk-buttons {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
 
 .btn-primary,
 .btn-secondary,
 .btn-action {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
   border-radius: 0.375rem;
-  font-size: 0.875rem;
   font-weight: 500;
-  transition: all 0.2s;
-  border: none;
+  font-size: 0.875rem;
   cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
 }
 
 .btn-primary {
@@ -962,46 +1222,51 @@ onMounted(() => {
 }
 
 .btn-primary:disabled {
-  background: #9ca3af;
+  background: #6ee7b7;
   cursor: not-allowed;
 }
 
 .btn-secondary {
-  background: #f3f4f6;
+  background: white;
+  border-color: #d1d5db;
   color: #374151;
-  border: 1px solid #d1d5db;
 }
 
 .btn-secondary:hover {
-  background: #e5e7eb;
+  background: #f9fafb;
+  border-color: #9ca3af;
 }
 
 .btn-action {
-  background: #3b82f6;
-  color: white;
-  padding: 0.5rem;
+  padding: 0.4rem;
+  background: #eff6ff;
+  color: #2563eb;
+  border-color: #bfdbfe;
 }
 
 .btn-action:hover:not(:disabled) {
-  background: #2563eb;
+  background: #dbeafe;
 }
 
-.btn-icon,
-.action-icon {
-  width: 1rem;
-  height: 1rem;
+.btn-action:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 .progress-container {
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  background: white;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
 }
 
 .progress-bar {
-  width: 100%;
   height: 0.5rem;
   background: #e5e7eb;
-  border-radius: 0.25rem;
+  border-radius: 999px;
   overflow: hidden;
+  margin-bottom: 0.5rem;
 }
 
 .progress-fill {
@@ -1011,14 +1276,61 @@ onMounted(() => {
 }
 
 .progress-text {
-  margin-top: 0.5rem;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: #4b5563;
 }
 
+.empty-state {
+  text-align: center;
+  padding: 4rem 1rem;
+  background: white;
+  border-radius: 0.75rem;
+  border: 1px dashed #d1d5db;
+}
+
+.empty-icon-wrapper {
+  display: inline-flex;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 50%;
+  margin-bottom: 1rem;
+}
+
+.empty-icon {
+  width: 2rem;
+  height: 2rem;
+  color: #9ca3af;
+}
+
+.empty-state h3 {
+  font-size: 1.1rem;
+  color: #374151;
+  margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+  color: #6b7280;
+  margin-bottom: 1.5rem;
+}
+
+.empty-action-btn {
+  padding: 0.5rem 1rem;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  color: #374151;
+  cursor: pointer;
+}
+
+.empty-action-btn:hover {
+  background: #f3f4f6;
+}
+
+/* ==================== ТАБЛИЦА ==================== */
 .protocols-table-container {
   background: white;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   border: 1px solid #e5e7eb;
   overflow: hidden;
 }
@@ -1029,6 +1341,7 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: #f9fafb;
 }
 
 .select-all-checkbox {
@@ -1036,12 +1349,14 @@ onMounted(() => {
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
-  font-weight: 500;
+  font-size: 0.875rem;
+  color: #374151;
+  user-select: none;
 }
 
 .table-info {
-  color: #6b7280;
   font-size: 0.875rem;
+  color: #6b7280;
 }
 
 .table-wrapper {
@@ -1051,86 +1366,94 @@ onMounted(() => {
 .protocols-table {
   width: 100%;
   border-collapse: collapse;
+  font-size: 0.875rem;
+  /* table-layout: fixed; Убрал фиксацию, чтобы остальные колонки тянулись */
 }
 
 .protocols-table th,
 .protocols-table td {
-  padding: 0.75rem;
-  text-align: left;
+  padding: 0.75rem 1rem;
+  text-align: center;
   border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+  word-wrap: break-word;
 }
 
 .protocols-table th {
   background: #f9fafb;
   font-weight: 600;
   color: #374151;
+  white-space: nowrap;
 }
 
+.student-name,
+.specialization-cell,
+.project-title {
+  text-align: left;
+  white-space: normal;
+  word-wrap: break-word;
+  line-height: 1.4;
+}
+
+/* === ИЗМЕНЕННЫЕ ШИРИНЫ КОЛОНОК === */
+
+/* Выбор (Чекбокс) - уменьшили */
 .checkbox-column {
-  width: 3rem;
+  width: 40px !important;
+  text-align: center !important;
 }
 
-.protocol-checkbox,
-.select-all-checkbox {
-  display: flex;
-  align-items: center;
+/* Оценка - уменьшили */
+.protocols-table th:nth-child(7),
+.protocols-table td:nth-child(7) {
+  width: 80px !important;
 }
 
-.checkmark {
+/* Год - уменьшили */
+.protocols-table th:nth-child(8),
+.protocols-table td:nth-child(8) {
+  width: 70px !important;
+}
+
+/* Дата защиты - уменьшили */
+.protocols-table th:nth-child(9),
+.protocols-table td:nth-child(9) {
+  width: 110px !important;
+}
+
+/* Действия - уменьшили */
+.actions-column {
+  width: 60px !important;
+  text-align: center !important;
+}
+
+/* Остальные стили таблицы без изменений */
+input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: #059669;
   width: 1rem;
   height: 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.25rem;
-  position: relative;
-}
-
-input[type="checkbox"] {
-  opacity: 0;
-  position: absolute;
-}
-
-input[type="checkbox"]:checked + .checkmark {
-  background: #059669;
-  border-color: #059669;
-}
-
-input[type="checkbox"]:checked + .checkmark::after {
-  content: "✓";
-  position: absolute;
-  color: white;
-  font-size: 0.75rem;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
 }
 
 .selected-row {
-  background: #f0fdf4;
+  background-color: #f0fdf4;
 }
 
 .student-name {
   font-weight: 500;
 }
 
-.specialization-cell {
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
+.specialization-cell,
 .project-title {
-  max-width: 250px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-width: 300px;
 }
 
 .grade-badge {
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .grade-excellent {
@@ -1155,131 +1478,156 @@ input[type="checkbox"]:checked + .checkmark::after {
 
 .grade-unknown {
   background: #f3f4f6;
-  color: #374151;
-}
-
-.actions-column {
-  width: 4rem;
+  color: #6b7280;
 }
 
 .pagination-container {
   padding: 1rem;
+  border-top: 1px solid #e5e7eb;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 1px solid #e5e7eb;
+  background: white;
 }
 
 .pagination-controls {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .pagination-btn {
   padding: 0.5rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid #e5e7eb;
   background: white;
   border-radius: 0.375rem;
   cursor: pointer;
-  transition: all 0.2s;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pagination-btn:hover:not(:disabled) {
   background: #f3f4f6;
+  border-color: #d1d5db;
 }
 
 .pagination-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
-}
-
-.pagination-icon {
-  width: 1rem;
-  height: 1rem;
-}
-
-.page-info {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin: 0 0.5rem;
 }
 
 .notifications {
   position: fixed;
-  top: 1rem;
-  right: 1rem;
-  z-index: 1000;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 50;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
 
 .notification {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: white;
   border-radius: 0.5rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  min-width: 300px;
   max-width: 400px;
+  border-left: 4px solid transparent;
+  animation: slideIn 0.3s ease-out;
 }
 
 .notification-success {
-  background: #dcfce7;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+  border-left-color: #10b981;
 }
 
 .notification-error {
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
+  border-left-color: #ef4444;
 }
 
 .notification-info {
-  background: #dbeafe;
-  color: #1e40af;
-  border: 1px solid #bfdbfe;
+  border-left-color: #3b82f6;
 }
 
 .notification-icon {
-  width: 1.25rem;
-  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.notification-success .notification-icon {
+  color: #10b981;
+}
+
+.notification-error .notification-icon {
+  color: #ef4444;
+}
+
+.notification-info .notification-icon {
+  color: #3b82f6;
 }
 
 .notification-close {
+  margin-left: auto;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0.25rem;
-  margin-left: auto;
+  color: #9ca3af;
 }
 
-.close-icon {
+.notification-close:hover {
+  color: #4b5563;
+}
+
+.btn-icon {
   width: 1rem;
   height: 1rem;
 }
 
-@media (max-width: 1024px) {
-  .header-controls {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
+.btn-icon-small {
+  width: 0.9rem;
+  height: 0.9rem;
+}
 
-  .search-box {
-    max-width: none;
-  }
+.btn-icon-tiny {
+  width: 0.75rem;
+  height: 0.75rem;
+}
 
-  .filter-controls {
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
+.spinning {
+  animation: spin 1s linear infinite;
+}
 
-  .year-filter,
-  .specialization-filter {
-    width: auto;
-    min-width: 150px;
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 
@@ -1287,40 +1635,26 @@ input[type="checkbox"]:checked + .checkmark::after {
   .archive-container {
     padding: 1rem;
   }
-
-  .header-controls {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  .search-box {
-    min-width: auto;
-    max-width: none;
-  }
-
-  .filter-controls {
-    justify-content: stretch;
-  }
-
-  .year-filter,
-  .specialization-filter {
-    flex: 1;
-    min-width: auto;
-    width: auto;
-  }
-
-  .bulk-actions-panel {
+  .controls-wrapper {
     flex-direction: column;
     align-items: stretch;
   }
-
-  .bulk-buttons {
-    justify-content: center;
+  .search-box {
+    max-width: none;
   }
-
-  .pagination-container {
+  .filter-group {
+    flex-wrap: wrap;
+  }
+  .select-wrapper {
+    flex: 1;
+  }
+  .bulk-actions-panel {
     flex-direction: column;
     gap: 1rem;
+    align-items: stretch;
+  }
+  .bulk-buttons {
+    justify-content: space-between;
   }
 }
 </style>

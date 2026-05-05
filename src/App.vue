@@ -70,7 +70,7 @@
           <span class="menu-text">Расписание проектов</span>
         </router-link>
 
-        <!--  <router-link
+        <router-link
           v-if="isAdmin"
           to="/archiveprotocols"
           class="menu-item"
@@ -79,7 +79,7 @@
           <span class="menu-icon">🗄️</span>
           <span class="menu-text">Архив протоколов</span>
         </router-link>
-
+        <!-- 
         <router-link
           v-if="isAdmin"
           to="/management"
