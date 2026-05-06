@@ -318,7 +318,7 @@ export default {
         // он тоже скорее всего ожидает snake_case (name, specialization_id)
         const commissionData = {
           name: this.commissionName.trim(),
-          id_specialization: parseInt(this.selectedSpecialization),
+          ID_Specialization: parseInt(this.selectedSpecialization),
         };
 
         console.log("Отправляем данные комиссии:", commissionData);
@@ -335,7 +335,7 @@ export default {
 
         const postComposition = async (memberId, role) => {
           await api.post("/api/commission_compositions/", {
-            id_commission: commissionId, // ← Было ID_Commission / commission_id
+            ID_Commission: commissionId, // ← Было ID_Commission / commission_id
             member_id: parseInt(memberId), // ← OK, благодаря write_only полю
             role: role, // ← OK, Role → role
           });
