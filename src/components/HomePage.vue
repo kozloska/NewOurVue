@@ -19,7 +19,7 @@
         <router-link to="/projectdefense" class="action-card">
           <div class="action-icon">🎓</div>
           <h3>Защита проектов</h3>
-          <p>Проведение защиты выпускных работ</p>
+          <p>Проведение защиты проектов ЦК</p>
         </router-link>
       </div>
     </div>

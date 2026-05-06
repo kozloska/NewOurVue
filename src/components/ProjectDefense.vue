@@ -899,7 +899,7 @@ export default {
           return;
         }
         if (!confirm("Вы уверены, что хотите удалить этот вопрос?")) return;
-        const response = await api.delete(`/questions/${questionId}/`);
+        const response = await api.delete(`/api/questions/${questionId}/`);
         if (response.status === 200 || response.status === 204) {
           this.questions = this.questions.filter((q) => q.ID !== questionId);
           alert("Вопрос успешно удален!");
