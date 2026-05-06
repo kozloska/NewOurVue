@@ -317,7 +317,7 @@ export default {
         // ВАЖНО: Проверьте CommissionSerializer. Если там нет явных полей,
         // он тоже скорее всего ожидает snake_case (name, specialization_id)
         const commissionData = {
-          name: this.commissionName.trim(),
+          Name: this.commissionName.trim(),
           ID_Specialization: parseInt(this.selectedSpecialization),
         };
 
@@ -337,7 +337,7 @@ export default {
           await api.post("/api/commission_compositions/", {
             ID_Commission: commissionId, // ← Было ID_Commission / commission_id
             member_id: parseInt(memberId), // ← OK, благодаря write_only полю
-            role: role, // ← OK, Role → role
+            Role: role, // ← OK, Role → role
           });
         };
 
