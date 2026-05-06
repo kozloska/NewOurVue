@@ -355,8 +355,8 @@ export default {
 
         // 5. Привязываем секретаря к специализации
         await api.post("/api/secretary_specialization/", {
-          ID_Specialization: parseInt(this.selectedSpecialization),
-          ID_Secretary: parseInt(this.selectedSecretary),
+          id_specialization: parseInt(this.selectedSpecialization),
+          id_secretary: parseInt(this.selectedSecretary),
         });
 
         this.successMessage = `Комиссия "${this.commissionName}" успешно сформирована!`;
