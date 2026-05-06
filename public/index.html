@@ -1,17 +1,27 @@
-<!DOCTYPE html>
-<html lang="">
-  <head>
+<!doctype html>
+<html lang="ru">
+<head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <link rel="icon" href="<%= BASE_URL %>favicon.ico">
-    <title><%= htmlWebpackPlugin.options.title %></title>
-  </head>
-  <body>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    
+    <!-- 1. НАЗВАНИЕ САЙТА (меняйте текст внутри тега title) -->
+    <title>Защиты проектов ЦК</title>
+    
+    <!-- 2. ИКОНКА (убедитесь, что файл favicon.ico лежит в папке public) -->
+    <link rel="icon" href="/logo.png">
+    
+    <!-- Если иконка в формате PNG, используйте эту строку вместо верхней: -->
+    <!-- <link rel="icon" type="image/png" href="/favicon.png"> -->
+
+    <script defer="defer" src="/js/chunk-vendors.02f795a0.js"></script>
+    <script defer="defer" src="/js/app.95bb17a6.js"></script>
+    <link href="/css/app.e1281f9b.css" rel="stylesheet">
+</head>
+<body>
     <noscript>
-      <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+        <strong></strong>
     </noscript>
     <div id="app"></div>
-    <!-- built files will be auto injected -->
-  </body>
+</body>
 </html>
