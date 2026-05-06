@@ -1,7 +1,7 @@
 <template>
   <div class="homepage">
     <div class="welcome-section">
-      <h1>Добро пожаловать в систему защиты проектов</h1>
+      <h1>Добро пожаловать в систему защиты проектов ЦК</h1>
       <p class="welcome-subtitle">
         Здравствуйте, <strong>{{ userFullName }}</strong
         >! Вы успешно авторизованы в системе.

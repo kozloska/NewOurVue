@@ -37,7 +37,7 @@
 
           <div class="select-wrapper">
             <select v-model="selectedSpecialization" class="filter-select">
-              <option value="">Все специализации</option>
+              <option value="">Все направления</option>
               <option
                 v-for="spec in specializations"
                 :key="spec.ID"
@@ -201,7 +201,7 @@
                 <th>№</th>
                 <th>ФИО студента</th>
                 <th>Группа</th>
-                <th>Специализация</th>
+                <th>Направление</th>
                 <th>Тема проекта</th>
                 <th>Оценка</th>
                 <th>Год</th>

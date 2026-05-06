@@ -4,7 +4,7 @@
       <div class="login-header">
         <div class="logo">🎓</div>
         <h1 class="app-title">Вход в систему</h1>
-        <p class="app-subtitle">Система защиты проектов ИРНИТУ</p>
+        <p class="app-subtitle">Система защиты проектов ЦК</p>
       </div>
 
       <div v-if="errorMessage" class="error-message">⚠️ {{ errorMessage }}</div>

@@ -7,11 +7,11 @@
         <div class="form-card specialization-card">
           <div class="card-header">
             <div class="card-icon">🎓</div>
-            <h3>Специализация</h3>
+            <h3>Направление подготовки</h3>
           </div>
           <div class="card-content">
             <div class="form-group">
-              <label for="specialization-select">Специализация:</label>
+              <label for="specialization-select">Направление:</label>
               <select
                 id="specialization-select"
                 v-model="selectedSpecialization"
@@ -22,7 +22,7 @@
                   {{
                     loadingSpecializations
                       ? "Загрузка..."
-                      : "Выберите специализацию"
+                      : "Выберите направление"
                   }}
                 </option>
                 <option
@@ -312,47 +312,52 @@ export default {
         this.creating = true;
         this.errorMessage = "";
         this.successMessage = "";
+
         // 1. Создаём комиссию
+        // ВАЖНО: Проверьте CommissionSerializer. Если там нет явных полей,
+        // он тоже скорее всего ожидает snake_case (name, specialization_id)
         const commissionData = {
-          Name: this.commissionName.trim(),
-          ID_Specialization: parseInt(this.selectedSpecialization),
+          name: this.commissionName.trim(),
+          specialization_id: parseInt(this.selectedSpecialization),
         };
+
         console.log("Отправляем данные комиссии:", commissionData);
+
         const commissionResponse = await api.post(
           "/api/commissions/",
           commissionData
         );
-        const commissionId = commissionResponse.data.ID;
+
+        // Получаем ID созданной комиссии (учитываем, что бэкенд может вернуть 'id' или 'ID')
+        const commissionId =
+          commissionResponse.data.id || commissionResponse.data.ID;
         console.log("Комиссия создана, ID:", commissionId);
 
-        // 2. Добавляем председателя (НЕ передаём поле ID!)
-        await api.post("api/commission_compositions/", {
-          ID_Commission: commissionId,
-          ID_Member: parseInt(this.selectedChairman),
-          Role: "Председатель",
-        });
+        // Вспомогательная функция для добавления участников
+        const postComposition = async (memberId, role) => {
+          await api.post("/api/commission_compositions/", {
+            commission_id: commissionId, // ← Было ID_Commission
+            member_id: parseInt(memberId), // ← Было ID_Member (это исправляет вашу ошибку)
+            role: role, // ← Было Role
+          });
+        };
 
-        // 3. Добавляем секретаря (НЕ передаём поле ID!)
-        await api.post("api/commission_compositions/", {
-          ID_Commission: commissionId,
-          ID_Member: parseInt(this.selectedSecretary),
-          Role: "Секретарь",
-        });
+        // 2. Добавляем председателя
+        await postComposition(this.selectedChairman, "Председатель");
 
-        // 4. Добавляем членов комиссии (НЕ передаём поле ID!)
+        // 3. Добавляем секретаря
+        await postComposition(this.selectedSecretary, "Секретарь");
+
+        // 4. Добавляем членов комиссии
         const validMembers = this.selectedMembers.filter((id) => id);
         for (const memberId of validMembers) {
-          await api.post("api/commission_compositions/", {
-            ID_Commission: commissionId,
-            ID_Member: parseInt(memberId),
-            Role: "Член аттестационной комиссии",
-          });
+          await postComposition(memberId, "Член аттестационной комиссии");
         }
 
-        // 5. Привязываем секретаря к специализации (SecretarySpecialization)
-        await api.post("api/secretary_specialization/", {
-          ID_Specialization: parseInt(this.selectedSpecialization),
-          ID_Secretary: parseInt(this.selectedSecretary),
+        // 5. Привязываем секретаря к специализации
+        await api.post("/api/secretary_specialization/", {
+          specialization_id: parseInt(this.selectedSpecialization),
+          secretary_id: parseInt(this.selectedSecretary),
         });
 
         this.successMessage = `Комиссия "${this.commissionName}" успешно сформирована!`;
@@ -364,23 +369,21 @@ export default {
         let errorMsg = "Ошибка при создании комиссии: ";
 
         if (error.response?.data) {
-          if (typeof error.response.data === "string") {
-            errorMsg += error.response.data;
-          } else if (error.response.data.message) {
-            errorMsg += error.response.data.message;
-          } else if (error.response.data.detail) {
-            errorMsg += error.response.data.detail;
-          } else if (error.response.data.ID_Member) {
-            errorMsg += `Член комиссии: ${error.response.data.ID_Member[0]}`;
-          } else if (error.response.data.ID_Commission) {
-            errorMsg += `Комиссия: ${error.response.data.ID_Commission[0]}`;
+          const data = error.response.data;
+          // Красивый вывод ошибок валидации от DRF
+          if (typeof data === "object" && !Array.isArray(data)) {
+            const firstKey = Object.keys(data)[0];
+            if (firstKey && Array.isArray(data[firstKey])) {
+              errorMsg += data[firstKey][0];
+            } else {
+              errorMsg += JSON.stringify(data);
+            }
           } else {
-            errorMsg += JSON.stringify(error.response.data);
+            errorMsg += data;
           }
         } else {
           errorMsg += error.message;
         }
-
         this.errorMessage = errorMsg;
       } finally {
         this.creating = false;
