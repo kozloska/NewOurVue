@@ -153,7 +153,7 @@
                   Нет студентов в проекте
                 </div>
                 <div v-else class="students-list">
-                  <!-- ✅ ЦИКЛ ПО СТУДЕНТАМ - ВСЁ ВНУТРИ ЭТОГО DIV -->
+                  <!-- ✅ ЦИКЛ ПО СТУДЕНТАМ -->
                   <div
                     v-for="student in students[project.ID]"
                     :key="student.ID"
@@ -210,7 +210,7 @@
                         </div>
                       </div>
 
-                      <!-- ✅ === НОВЫЙ БЛОК: Выбор квалификации (ВНУТРИ цикла!) === -->
+                      <!-- ✅ Выбор квалификации (если проект не утверждён) -->
                       <div
                         class="student-qualification"
                         v-if="!project.isApproved"
@@ -222,6 +222,12 @@
                             class="qualification-select"
                             :disabled="
                               loadingQualifications[getSpecId(student)]
+                            "
+                            @change="
+                              handleQualificationChange(
+                                student.ID,
+                                $event.target.value
+                              )
                             "
                           >
                             <option value="">Не выбрана</option>
@@ -270,10 +276,10 @@
                         class="action-button docx-button"
                         :disabled="
                           generatingDocx[student.ID] ||
-                          !project.questionsDistributed
+                          !isQuestionsDistributed(project)
                         "
                         :title="
-                          !project.questionsDistributed
+                          !isQuestionsDistributed(project)
                             ? 'Сначала распределите вопросы'
                             : ''
                         "
@@ -301,7 +307,7 @@
               </div>
               <!-- /.students-section -->
 
-              <!-- Секция вопросов (остается на уровне проекта, не внутри студента) -->
+              <!-- Секция вопросов (остается на уровне проекта) -->
               <div class="questions-section">
                 <div class="section-header">
                   <div class="section-icon">❓</div>
@@ -322,10 +328,10 @@
                     class="add-question-btn"
                     :disabled="
                       !newQuestionText[project.ID]?.trim() ||
-                      project.questionsDistributed
+                      isQuestionsDistributed(project)
                     "
                     :title="
-                      project.questionsDistributed
+                      isQuestionsDistributed(project)
                         ? 'Вопросы уже распределены'
                         : ''
                     "
@@ -397,12 +403,18 @@
             <div class="project-actions">
               <!-- Кнопка: Распределить вопросы -->
               <button
-                v-if="!project.questionsDistributed"
+                v-if="!isQuestionsDistributed(project)"
                 @click="distributeQuestionsForProject(project)"
                 class="distribute-questions-button"
                 :disabled="
                   !students[project.ID]?.length ||
-                  distributingQuestions[project.ID]
+                  distributingQuestions[project.ID] ||
+                  !areAllQualificationsSelected(project)
+                "
+                :title="
+                  !areAllQualificationsSelected(project)
+                    ? 'Сначала выберите квалификацию для всех студентов'
+                    : ''
                 "
               >
                 <span class="button-icon">{{
@@ -416,7 +428,7 @@
               </button>
 
               <!-- ✅ Кнопки после распределения вопросов -->
-              <template v-else>
+              <template v-else-if="isQuestionsDistributed(project)">
                 <!-- Скачать все протоколы -->
                 <button
                   @click="generateAllDocx(project)"
@@ -617,16 +629,36 @@ export default {
       }
     },
 
-    // === НОВЫЙ МЕТОД: Обработчик изменения квалификации ===
+    // === Обработчик изменения квалификации с авто-сохранением ===
     async handleQualificationChange(studentId, newQualId) {
-      // Обновляем локальное состояние
+      // 1. Сначала обновляем локальное состояние (для мгновенного отклика)
       this.selectedQualifications[studentId] = newQualId || null;
 
-      // Опционально: сразу сохраняем на сервер (раскомментируйте, если нужно автосохранение)
-      // const student = Object.values(this.students).flat().find(s => s.ID === studentId);
-      // if (student && student.ID_Qualification !== undefined) {
-      //   await this.updateStudentQualification(studentId, newQualId || null);
-      // }
+      // 2. Находим студента, чтобы проверить, есть ли у него уже сохранённая квалификация
+      const allStudents = Object.values(this.students).flat();
+      const student = allStudents.find((s) => s.ID === studentId);
+
+      // 3. Если студент найден и квалификация реально изменилась — сохраняем на сервер
+      if (student && student.ID_Qualification !== (newQualId || null)) {
+        try {
+          await api.patch(`/api/students/${studentId}/`, {
+            ID_Qualification: newQualId || null,
+          });
+          // 4. Обновляем локальное значение в объекте студента для консистентности
+          student.ID_Qualification = newQualId || null;
+          console.log(`✅ Квалификация студента ${studentId} сохранена`);
+        } catch (error) {
+          console.error(
+            `❌ Ошибка сохранения квалификации студента ${studentId}:`,
+            error
+          );
+          this.errorMessage =
+            "Не удалось сохранить квалификацию. Попробуйте позже.";
+          // Откатываем локальное значение при ошибке
+          this.selectedQualifications[studentId] =
+            student.ID_Qualification || null;
+        }
+      }
     },
 
     async loadSpecializations() {
@@ -655,8 +687,10 @@ export default {
       this.loadingDefenses = true;
       this.errorDefenses = null;
       try {
-        const response = await api.get("/api/defenses/", {
-          params: { specialization_id: this.selectedSpecialization },
+        const response = await api.get("/api/defenses/with-pending-projects/", {
+          params: {
+            specialization_id: this.selectedSpecialization,
+          },
         });
         this.defenses = response.data;
       } catch (error) {
@@ -780,6 +814,15 @@ export default {
           }
         }
         this.students[projectId] = studentsWithGrade;
+
+        // === Синхронизация флага questionsDistributed для обратной совместимости ===
+        const hasQuestions = studentsWithGrade.some(
+          (s) => s.questions?.question1 || s.questions?.question2
+        );
+        const project = this.projects.find((p) => p.ID === projectId);
+        if (project) {
+          project.questionsDistributed = hasQuestions;
+        }
       } catch (error) {
         console.error(
           `Ошибка загрузки студентов для проекта ${projectId}:`,
@@ -877,7 +920,7 @@ export default {
       }
     },
 
-    // === УЛУЧШЕННЫЙ МЕТОД: получение названия квалификации ===
+    // === Получение названия квалификации ===
     getQualificationName(qualificationId, student) {
       if (!qualificationId) return "";
       if (typeof qualificationId === "object")
@@ -890,7 +933,6 @@ export default {
       const quals = this.qualifications[specId] || [];
       const qual = quals.find((q) => q.ID === qualificationId);
 
-      // Фоллбэк: если не нашли в кэше, возвращаем сам ID
       return qual?.Name || `ID: ${qualificationId}`;
     },
 
@@ -931,6 +973,28 @@ export default {
       if (!timeStr) return { hours: "00", minutes: "00" };
       const parts = timeStr.split(":");
       return { hours: parts[0] || "00", minutes: parts[1] || "00" };
+    },
+
+    // === ✅ ПРОВЕРКА: распределены ли вопросы у проекта ===
+    isQuestionsDistributed(project) {
+      const students = this.students[project.ID] || [];
+      if (!students.length) return false;
+      return students.some(
+        (student) =>
+          student.questions &&
+          (student.questions.question1 || student.questions.question2)
+      );
+    },
+
+    // === ✅ ПРОВЕРКА: все ли студенты имеют выбранную квалификацию ===
+    areAllQualificationsSelected(project) {
+      const students = this.students[project.ID] || [];
+      if (!students.length) return true;
+      return students.every((student) => {
+        return (
+          student.ID_Qualification || this.selectedQualifications[student.ID]
+        );
+      });
     },
 
     formatDateTimeForDoc(dateTimeStr) {
@@ -1076,13 +1140,21 @@ export default {
       }
     },
 
-    // Распределение вопросов
+    // === Распределение вопросов ===
     async distributeQuestionsForProject(project) {
       const students = this.students[project.ID];
       if (!students?.length) {
         this.errorMessage = "Нет студентов для распределения вопросов";
         return;
       }
+
+      // === ✅ Проверка квалификаций перед распределением ===
+      if (!this.areAllQualificationsSelected(project)) {
+        this.errorMessage =
+          "Необходимо выбрать квалификацию для всех студентов перед распределением вопросов";
+        return;
+      }
+
       if (
         !confirm(
           "Распределить вопросы между студентами? После этого вопросы нельзя будет изменить."
@@ -1171,14 +1243,22 @@ export default {
       }
     },
 
-    // Генерация DOCX для одного студента
+    // === Генерация DOCX для одного студента ===
     async generateDocxForStudent(student, project) {
+      // === ✅ Проверка шаблона с автозагрузкой ===
       if (!this.templateBuffer) {
-        alert("Шаблон документа не загружен");
-        return;
+        await this.loadTemplate();
+        if (!this.templateBuffer) {
+          this.errorMessage = "Шаблон документа не загружен";
+          setTimeout(() => this.clearMessages(), 3000);
+          return;
+        }
       }
-      if (!project.questionsDistributed) {
-        alert("Сначала распределите вопросы");
+
+      // === ✅ Проверка распределения вопросов через isQuestionsDistributed ===
+      if (!this.isQuestionsDistributed(project)) {
+        this.errorMessage = "Сначала распределите вопросы";
+        setTimeout(() => this.clearMessages(), 3000);
         return;
       }
 
@@ -1192,7 +1272,8 @@ export default {
           },
         });
         if (!protoRes.data?.length) {
-          alert("Протокол не найден для студента");
+          this.errorMessage = "Протокол не найден для студента";
+          setTimeout(() => this.clearMessages(), 3000);
           return;
         }
         const protocol = protoRes.data[0];
@@ -1232,24 +1313,36 @@ export default {
         this.successMessage = `Протокол для ${student.Surname} сгенерирован!`;
       } catch (error) {
         console.error("Ошибка генерации DOCX:", error);
-        alert("Ошибка: " + error.message);
+        this.errorMessage = "Ошибка: " + error.message;
+        setTimeout(() => this.clearMessages(), 3000);
       } finally {
         this.generatingDocx[student.ID] = false;
       }
     },
 
+    // === Генерация всех протоколов проекта ===
     async generateAllDocx(project) {
       const students = this.students[project.ID];
       if (!students?.length) {
         this.errorMessage = "Нет студентов для генерации";
+        setTimeout(() => this.clearMessages(), 3000);
         return;
       }
+
+      // === ✅ Проверка шаблона с автозагрузкой ===
       if (!this.templateBuffer) {
-        alert("Шаблон не загружен");
-        return;
+        await this.loadTemplate();
+        if (!this.templateBuffer) {
+          this.errorMessage = "Шаблон документа не загружен";
+          setTimeout(() => this.clearMessages(), 3000);
+          return;
+        }
       }
-      if (!project.questionsDistributed) {
-        alert("Сначала распределите вопросы");
+
+      // === ✅ Проверка распределения вопросов ===
+      if (!this.isQuestionsDistributed(project)) {
+        this.errorMessage = "Сначала распределите вопросы";
+        setTimeout(() => this.clearMessages(), 3000);
         return;
       }
 
@@ -1284,7 +1377,7 @@ export default {
       }
     },
 
-    // === ✅ ИСПРАВЛЕННЫЙ МЕТОД: Подготовка данных для шаблона ===
+    // === Подготовка данных для шаблона ===
     async prepareTemplateData(student, protocol, project) {
       const specialization = student.ID_Specialization;
       const commission = protocol.ID_DefenseSchedule?.ID_Commission;
@@ -1345,7 +1438,7 @@ export default {
         console.error("Ошибка склонения:", e);
       }
 
-      // === ✅ ИСПРАВЛЕНИЕ: Приоритет локально выбранной квалификации ===
+      // === Приоритет локально выбранной квалификации ===
       const qualificationValue = (() => {
         const localQualId = this.selectedQualifications[student.ID];
         if (localQualId) {
@@ -1356,14 +1449,6 @@ export default {
           "Не указана"
         );
       })();
-
-      // Лог для отладки (можно убрать в продакшене)
-      console.log("Template data for student:", {
-        studentId: student.ID,
-        dbQualification: student.ID_Qualification,
-        localSelection: this.selectedQualifications[student.ID],
-        result: qualificationValue,
-      });
 
       return {
         starthours: startTime.hours,
@@ -1389,15 +1474,16 @@ export default {
       };
     },
 
-    // Утверждение проекта
+    // === Утверждение проекта ===
     async approveProject(project) {
       const students = this.students[project.ID];
       if (!students?.length) {
         this.errorMessage = "Нет студентов для утверждения";
         return;
       }
-      if (!project.questionsDistributed) {
-        alert("Сначала распределите вопросы");
+      if (!this.isQuestionsDistributed(project)) {
+        this.errorMessage = "Сначала распределите вопросы";
+        setTimeout(() => this.clearMessages(), 3000);
         return;
       }
       if (
@@ -1498,6 +1584,7 @@ export default {
 </script>
 
 <style scoped>
+/* === Все стили остаются без изменений === */
 protocol-generator {
   padding: 1.5rem;
   max-width: 1400px;
@@ -1935,8 +2022,6 @@ h5 {
 .message-icon {
   font-size: 1.25rem;
 }
-
-/* ✅ Стили для кнопок проекта */
 .project-actions {
   padding: 1rem 1.5rem;
   background-color: #f8fafc;
@@ -2129,16 +2214,6 @@ h5 {
     justify-content: flex-end;
   }
 }
-.project-actions {
-  padding: 1rem 1.5rem;
-  background-color: #f8fafc;
-  border-top: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
 .distribute-questions-button {
   display: inline-flex;
   align-items: center;
@@ -2160,56 +2235,6 @@ h5 {
   background-color: #94a3b8;
   cursor: not-allowed;
 }
-
-.generate-all-docx-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background-color: #6366f1;
-  color: white;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 0.95rem;
-  transition: background-color 0.2s;
-}
-.generate-all-docx-button:hover:not(:disabled) {
-  background-color: #4f46e5;
-}
-.generate-all-docx-button:disabled {
-  background-color: #94a3b8;
-  cursor: not-allowed;
-}
-
-.approve-project-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: white;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 0.95rem;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
-}
-.approve-project-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
-  transform: translateY(-1px);
-}
-.approve-project-button:disabled {
-  background: #94a3b8;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
 .approved-badge {
   display: inline-flex;
   align-items: center;
@@ -2222,45 +2247,12 @@ h5 {
   font-size: 0.95rem;
   border: 1px solid #bbf7d0;
 }
-
-.button-icon {
-  font-size: 1rem;
-}
-.action-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.875rem;
-}
-.docx-button {
-  background-color: #3b82f6;
-  color: white;
-}
-.docx-button:hover:not(:disabled) {
-  background-color: #2563eb;
-}
-.docx-button:disabled {
-  background-color: #94a3b8;
-  cursor: not-allowed;
-}
-.student-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-left: 1rem;
-}
 /* === Стили для выбора квалификации === */
 .student-qualification {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px dashed #e2e8f0;
 }
-
 .qualification-label {
   display: block;
   font-size: 0.8rem;
@@ -2268,13 +2260,11 @@ h5 {
   font-weight: 500;
   margin-bottom: 0.25rem;
 }
-
 .qualification-select-wrapper {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
-
 .qualification-select {
   flex: 1;
   padding: 0.4rem 0.6rem;
@@ -2285,29 +2275,23 @@ h5 {
   color: #1e293b;
   transition: border-color 0.2s;
 }
-
 .qualification-select:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
-
 .qualification-select:disabled {
   background-color: #f8fafc;
   cursor: not-allowed;
   color: #94a3b8;
 }
-
 .loading-qual-mini {
   font-size: 0.9rem;
   color: #64748b;
 }
-
-/* Бейдж утверждённой квалификации */
 .student-qualification-approved {
   margin-top: 0.75rem;
 }
-
 .qualification-badge {
   display: inline-flex;
   align-items: center;
