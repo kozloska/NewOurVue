@@ -8,13 +8,32 @@
             <CalendarIcon class="year-icon" />
             <span>{{ currentYear }} учебный год</span>
           </div>
-          <span class="stat-item projects-stat">
+
+          <!-- Счётчик скрыт для секретаря -->
+          <span v-if="!isReadOnlyMode" class="stat-item projects-stat">
             <FolderIcon class="stat-icon" />
             Нераспределённых проектов: {{ filteredUnassignedProjects.length }}
           </span>
         </div>
 
         <div class="header-actions">
+          <!-- Бейдж режима для секретаря -->
+          <span
+            v-if="isReadOnlyMode"
+            class="stat-item"
+            style="
+              background: #fef3c7;
+              color: #92400e;
+              border-color: #fcd34d;
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+            "
+          >
+            <EyeIcon class="stat-icon" style="width: 1rem; height: 1rem" />
+            Режим просмотра
+          </span>
+
           <span v-if="selectedSpecialization" class="stat-item spec-badge">
             <TagIcon class="stat-icon" />
             {{ getCurrentSpecializationName }}
@@ -31,10 +50,11 @@
                 v-model="selectedSpecialization"
                 @change="applySpecializationFilter"
                 class="spec-select"
+                :disabled="loading"
               >
                 <option :value="null">Общее расписание</option>
                 <option
-                  v-for="spec in specializations"
+                  v-for="spec in availableSpecializations"
                   :key="spec.ID"
                   :value="spec.ID"
                 >
@@ -49,6 +69,7 @@
               v-if="selectedSpecialization"
               @click="clearSpecializationFilter"
               class="spec-clear-btn"
+              :disabled="loading"
             >
               <XIcon class="btn-icon" />
               Сбросить фильтр
@@ -58,9 +79,14 @@
       </div>
     </div>
 
-    <div class="schedule-content">
-      <!-- Пул нераспределённых проектов -->
-      <div class="unassigned-pool">
+    <div
+      class="schedule-content"
+      :class="{ 'full-width-mode': isReadOnlyMode }"
+    >
+      <!-- ЛЕВАЯ КОЛОНКА: ПУЛ ПРОЕКТОВ -->
+      <!-- ПОЛНОСТЬЮ СКРЫТА ДЛЯ СЕКРЕТАРЯ (isReadOnlyMode) -->
+      <!-- Благодаря этому правая колонка займет всю ширину -->
+      <div v-if="!isReadOnlyMode" class="unassigned-pool">
         <div class="pool-header">
           <h2>
             <FolderIcon class="section-icon" />
@@ -71,7 +97,11 @@
 
         <div class="pool-filters">
           <label class="filter-checkbox">
-            <input type="checkbox" v-model="showPartialOnly" />
+            <input
+              type="checkbox"
+              v-model="showPartialOnly"
+              :disabled="isReadOnlyMode"
+            />
             <span>Только частично защищённые проекты</span>
           </label>
 
@@ -83,12 +113,14 @@
               placeholder="Поиск по названию или руководителю..."
               class="search-input"
               @input="debouncedSearch"
+              :disabled="isReadOnlyMode"
             />
             <button
               v-if="projectSearchQuery"
               @click="clearProjectSearch"
               class="search-clear"
               title="Очистить поиск"
+              :disabled="isReadOnlyMode"
             >
               <XIcon class="btn-icon" />
             </button>
@@ -101,14 +133,12 @@
             :key="project.ID"
             class="project-card"
             :class="{
-              selected: selectedStudents.some(
-                (s) =>
-                  students.find((st) => st.ID === s)?.ID_Project?.ID ===
-                  project.ID
-              ),
+              selected: isProjectSelected(project.ID),
               'partial-project': isPartialProject(project.ID),
+              'card-readonly': isReadOnlyMode,
             }"
-            @click="toggleProjectExpand(project.ID)"
+            @click="!isReadOnlyMode && toggleProjectExpand(project.ID)"
+            :title="isReadOnlyMode ? 'Только просмотр' : ''"
           >
             <div class="project-header">
               <div
@@ -123,7 +153,11 @@
                 <input
                   type="checkbox"
                   :checked="isProjectSelected(project.ID)"
-                  @click.stop="toggleProjectSelection(project.ID)"
+                  :disabled="isReadOnlyMode"
+                  @click.stop="
+                    !isReadOnlyMode && toggleProjectSelection(project.ID)
+                  "
+                  :title="isReadOnlyMode ? 'Только просмотр' : ''"
                 />
               </div>
             </div>
@@ -145,9 +179,16 @@
                     v-for="student in getUnassignedStudents(project.ID)"
                     :key="student.ID"
                     class="student-tag"
-                    :class="{ selected: selectedStudents.includes(student.ID) }"
-                    @click.stop="toggleStudentSelection(student.ID)"
-                    title="Клик для выбора"
+                    :class="{
+                      selected: selectedStudents.includes(student.ID),
+                      'tag-readonly': isReadOnlyMode,
+                    }"
+                    @click.stop="
+                      !isReadOnlyMode && toggleStudentSelection(student.ID)
+                    "
+                    :title="
+                      isReadOnlyMode ? 'Только просмотр' : 'Клик для выбора'
+                    "
                   >
                     {{ student.Surname }} {{ student.Name?.[0] }}.
                     <span class="student-group" v-if="student.ID_Group?.Name">
@@ -156,7 +197,10 @@
                     <input
                       type="checkbox"
                       :checked="selectedStudents.includes(student.ID)"
-                      @click.stop="toggleStudentSelection(student.ID)"
+                      :disabled="isReadOnlyMode"
+                      @click.stop="
+                        !isReadOnlyMode && toggleStudentSelection(student.ID)
+                      "
                       class="student-checkbox"
                     />
                   </span>
@@ -191,7 +235,7 @@
             }}
           </p>
           <button
-            v-if="projectSearchQuery"
+            v-if="projectSearchQuery && !isReadOnlyMode"
             @click="clearProjectSearch"
             class="clear-search-btn"
           >
@@ -199,7 +243,11 @@
           </button>
         </div>
 
-        <div v-if="selectedStudents.length > 0" class="selected-projects-panel">
+        <!-- Панель выбранных студентов: скрыта для секретаря -->
+        <div
+          v-if="selectedStudents.length > 0 && !isReadOnlyMode"
+          class="selected-projects-panel"
+        >
           <div class="selected-info">
             <span>Выбрано студентов: {{ selectedStudents.length }}</span>
             <div class="selected-actions">
@@ -244,7 +292,8 @@
         </div>
       </div>
 
-      <!-- Расписание защит -->
+      <!-- Расписание защит (ВИДНО ВСЕМ) -->
+      <!-- Занимает всю ширину, если левая колонка скрыта -->
       <div class="defense-schedule">
         <div class="schedule-header-section">
           <h2>
@@ -260,18 +309,22 @@
                 v-model="selectedDate"
                 @change="applyDateFilter"
                 class="date-input"
+                :disabled="loading"
               />
               <button
                 v-if="selectedDate"
                 @click="clearDateFilter"
                 class="date-clear"
                 title="Сбросить фильтр"
+                :disabled="loading"
               >
                 <XIcon class="btn-icon" />
               </button>
             </div>
 
+            <!-- Кнопка создания: скрыта для секретаря -->
             <button
+              v-if="!isReadOnlyMode"
               @click="openCreateScheduleModal"
               class="create-schedule-btn"
               :disabled="loading"
@@ -316,7 +369,10 @@
             v-for="schedule in filteredSchedules"
             :key="schedule.ID"
             class="schedule-card"
-            :class="{ 'schedule-full': getAvailableSlots(schedule) === 0 }"
+            :class="{
+              'schedule-full': getAvailableSlots(schedule) === 0,
+              'card-readonly': isReadOnlyMode,
+            }"
           >
             <div class="schedule-header-card">
               <div class="schedule-datetime">
@@ -341,7 +397,6 @@
                   {{ schedule.Class }}
                 </div>
 
-                <!-- Блок вместимости и кнопка редактирования рядом -->
                 <div
                   class="schedule-capacity-wrapper"
                   style="display: flex; align-items: center; gap: 8px"
@@ -358,8 +413,9 @@
                     </span>
                   </div>
 
-                  <!-- Кнопка карандаша теперь здесь, сразу после текста -->
+                  <!-- Кнопка редактирования вместимости: скрыта для секретаря -->
                   <button
+                    v-if="!isReadOnlyMode"
                     @click="openCapacityModal(schedule)"
                     class="edit-capacity-btn"
                     title="Изменить количество мест"
@@ -368,7 +424,7 @@
                   </button>
                 </div>
 
-                <!-- Кнопка скачивания Word -->
+                <!-- Кнопка скачивания Word: доступна всем -->
                 <button
                   @click="downloadScheduleDoc(schedule)"
                   class="download-btn"
@@ -393,8 +449,9 @@
                   <div class="assigned-project-title">
                     {{ projectData.project.Title }}
                   </div>
-                  <!-- 🔥 Кнопка удаления с проверкой Grade -->
+                  <!-- Кнопка удаления: скрыта для секретаря -->
                   <button
+                    v-if="!isReadOnlyMode"
                     @click="
                       unassignProjectFromSchedule(projectData.project, schedule)
                     "
@@ -439,9 +496,12 @@
             </div>
 
             <div class="assignment-section">
+              <!-- Блок назначения: скрыт для секретаря -->
               <div
                 v-if="
-                  selectedStudents.length > 0 && getAvailableSlots(schedule) > 0
+                  !isReadOnlyMode &&
+                  selectedStudents.length > 0 &&
+                  getAvailableSlots(schedule) > 0
                 "
                 class="assign-controls"
               >
@@ -476,6 +536,20 @@
                   <CheckIcon class="btn-icon" />
                   {{ assigningProjects ? "Назначение..." : "Назначить" }}
                 </button>
+              </div>
+
+              <!-- Сообщение для секретаря -->
+              <div
+                v-else-if="isReadOnlyMode"
+                class="schedule-full-message"
+                style="
+                  background: #f0f9ff;
+                  border-color: #bae6fd;
+                  color: #0369a1;
+                "
+              >
+                <InfoIcon class="full-icon" />
+                <span>Режим просмотра (изменения недоступны)</span>
               </div>
 
               <div
@@ -527,9 +601,9 @@
       </transition-group>
     </div>
 
-    <!-- Модальное окно: Подтверждение отмены -->
+    <!-- Модальное окно: Подтверждение отмены (скрыто для секретаря) -->
     <div
-      v-if="showUnassignConfirm"
+      v-if="showUnassignConfirm && !isReadOnlyMode"
       class="modal-overlay"
       @click.self="showUnassignConfirm = false"
     >
@@ -566,9 +640,9 @@
       </div>
     </div>
 
-    <!-- Модальное окно: Создание расписания -->
+    <!-- Модальное окно: Создание расписания (скрыто для секретаря) -->
     <div
-      v-if="showCreateModal"
+      v-if="showCreateModal && !isReadOnlyMode"
       class="modal-overlay"
       @click.self="closeCreateModal"
     >
@@ -651,9 +725,9 @@
       </div>
     </div>
 
-    <!-- Модальное окно: Изменение вместимости -->
+    <!-- Модальное окно: Изменение вместимости (скрыто для секретаря) -->
     <div
-      v-if="showCapacityModal && editingSchedule"
+      v-if="showCapacityModal && editingSchedule && !isReadOnlyMode"
       class="modal-overlay"
       @click.self="closeCapacityModal"
     >
@@ -724,6 +798,7 @@
     </div>
   </div>
 </template>
+
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import Docxtemplater from "docxtemplater";
@@ -752,7 +827,7 @@ import {
   DownloadIcon,
 } from "lucide-vue-next";
 
-// === STATE ===
+// === STATE: DATA ===
 const defenseSchedules = ref([]);
 const projects = ref([]);
 const students = ref([]);
@@ -765,25 +840,30 @@ const loading = ref(false);
 const notifications = ref([]);
 const abortController = ref(null);
 
+// === STATE: ROLE & ACCESS ===
+const currentUser = ref(null);
+const isSecretary = ref(false);
+const isAdmin = ref(false);
+const secretaryId = ref(null);
+const secretarySpecializations = ref([]); // Массив ID специальностей
+const secretarySpecializationsMap = ref({}); // Карта ID -> Name
+
+// === STATE: UI ===
 const currentYear = new Date().getFullYear();
 const selectedSpecialization = ref(null);
 const selectedDate = ref(null);
 const projectSearchQuery = ref("");
 const searchTimeout = ref(null);
-
 const showPartialOnly = ref(false);
 const expandedProjects = ref([]);
 const showSelectedDetails = ref(false);
-
 const showUnassignConfirm = ref(false);
 const confirmProject = ref(null);
 const confirmSchedule = ref(null);
 const confirmStudentCount = ref(0);
-
 const showCreateModal = ref(false);
 const showCapacityModal = ref(false);
 const editingSchedule = ref(null);
-
 const newScheduleForm = ref({
   DateTime: "",
   Class: "",
@@ -792,7 +872,25 @@ const newScheduleForm = ref({
 });
 const capacityForm = ref({ Count: 1 });
 
-// === COMPUTED ===
+// === COMPUTED: ROLE & ACCESS ===
+
+// Read-only режим для секретаря
+const isReadOnlyMode = computed(() => isSecretary.value);
+
+// Список специальностей для фильтра (админ — все, секретарь — только свои)
+const availableSpecializations = computed(() => {
+  // Если секретарь и у него есть список ограничений
+  if (isSecretary.value && secretarySpecializations.value.length > 0) {
+    return specializations.value.filter((spec) =>
+      secretarySpecializations.value.includes(spec.ID)
+    );
+  }
+  // Иначе (админ или нет ограничений) — показываем все
+  return specializations.value;
+});
+
+// === COMPUTED: DATA FILTERING ===
+
 const sortedSchedules = computed(() =>
   [...defenseSchedules.value].sort(
     (a, b) => new Date(a.DateTime) - new Date(b.DateTime)
@@ -801,6 +899,7 @@ const sortedSchedules = computed(() =>
 
 const filteredSchedules = computed(() => {
   let result = sortedSchedules.value;
+
   if (selectedDate.value) {
     result = result.filter((s) => {
       const d = new Date(s.DateTime);
@@ -812,11 +911,22 @@ const filteredSchedules = computed(() => {
       );
     });
   }
+
   if (selectedSpecialization.value) {
     result = result.filter(
       (s) => s.ID_Specialization === selectedSpecialization.value
     );
+  } else if (isSecretary.value && secretarySpecializations.value.length > 0) {
+    // Секретарь видит расписания ТОЛЬКО своих специальностей + общие (null)
+    result = result.filter((s) => {
+      const specId =
+        typeof s.ID_Specialization === "object"
+          ? s.ID_Specialization?.ID
+          : s.ID_Specialization;
+      return !specId || secretarySpecializations.value.includes(specId);
+    });
   }
+
   return result;
 });
 
@@ -827,15 +937,28 @@ const protocolsFiltered = computed(() => {
       (p) =>
         p.ID_Student?.ID_Specialization?.ID === selectedSpecialization.value
     );
+  } else if (isSecretary.value && secretarySpecializations.value.length > 0) {
+    result = result.filter((p) => {
+      const specId = p.ID_Student?.ID_Specialization?.ID;
+      return !specId || secretarySpecializations.value.includes(specId);
+    });
   }
   return result;
 });
 
 const studentsFiltered = computed(() => {
-  if (!selectedSpecialization.value) return students.value;
-  return students.value.filter(
-    (s) => s.ID_Specialization?.ID === selectedSpecialization.value
-  );
+  let result = students.value;
+  if (selectedSpecialization.value) {
+    result = result.filter(
+      (s) => s.ID_Specialization?.ID === selectedSpecialization.value
+    );
+  } else if (isSecretary.value && secretarySpecializations.value.length > 0) {
+    result = result.filter((s) => {
+      const specId = s.ID_Specialization?.ID;
+      return !specId || secretarySpecializations.value.includes(specId);
+    });
+  }
+  return result;
 });
 
 const projectsFiltered = computed(() => {
@@ -861,7 +984,8 @@ const searchedProjects = computed(() => {
 const getProjectSpecializationName = (projectId) => {
   const unassigned = getUnassignedStudents(projectId);
   if (!unassigned.length) return "";
-  return getSpecializationName(unassigned[0]?.ID_Specialization?.ID);
+  const specId = unassigned[0]?.ID_Specialization?.ID;
+  return getSpecializationName(specId);
 };
 
 const studentsByProject = computed(() => {
@@ -920,18 +1044,30 @@ const searchedUnassignedProjects = computed(() =>
 );
 
 // === HELPERS ===
-const getSpecializationName = (specId) =>
-  specializationNames.value[specId] || (specId ? `Программа #${specId}` : "");
+
+const getSpecializationName = (specId) => {
+  if (secretarySpecializationsMap.value[specId]) {
+    return secretarySpecializationsMap.value[specId];
+  }
+  return (
+    specializationNames.value[specId] || (specId ? `Программа #${specId}` : "")
+  );
+};
+
 const getUnassignedStudents = (id) =>
   unassignedProjects.value.find((p) => p.ID === id)?._unassignedStudents || [];
+
 const getTotalStudentsForProject = (id) =>
   unassignedProjects.value.find((p) => p.ID === id)?._allStudents?.length || 0;
+
 const getAssignedCountForProject = (id) =>
   getTotalStudentsForProject(id) - getUnassignedStudents(id).length;
+
 const getProjectProgress = (id) => {
   const t = getTotalStudentsForProject(id);
   return t ? Math.round((getAssignedCountForProject(id) / t) * 100) : 0;
 };
+
 const isPartialProject = (id) => {
   const a = getAssignedCountForProject(id);
   const t = getTotalStudentsForProject(id);
@@ -1004,46 +1140,62 @@ const isProjectSelected = (pid) =>
     (sid) =>
       studentsFiltered.value.find((s) => s.ID === sid)?.ID_Project?.ID === pid
   );
+
 const getStudentFullName = (id) => {
   const s = students.value.find((x) => x.ID === id);
   return s ? `${s.Surname} ${s.Name || ""} ${s.Patronymic || ""}`.trim() : "";
 };
+
 const getStudentProject = (id) =>
   students.value.find((s) => s.ID === id)?.ID_Project || null;
+
 const getStudentGroup = (id) =>
   students.value.find((s) => s.ID === id)?.ID_Group?.Name || null;
 
-// === ACTIONS ===
+// === ACTIONS: SELECTION ===
+
 const toggleProjectSelection = (pid) => {
+  if (isReadOnlyMode.value) return;
   const ids = getUnassignedStudents(pid).map((s) => s.ID);
   const all = ids.every((id) => selectedStudents.value.includes(id));
   selectedStudents.value = all
     ? selectedStudents.value.filter((id) => !ids.includes(id))
     : [...new Set([...selectedStudents.value, ...ids])];
 };
+
 const toggleStudentSelection = (id) => {
+  if (isReadOnlyMode.value) return;
   const i = selectedStudents.value.indexOf(id);
   i > -1
     ? selectedStudents.value.splice(i, 1)
     : selectedStudents.value.push(id);
 };
+
 const clearSelection = () => {
+  if (isReadOnlyMode.value) return;
   selectedStudents.value = [];
 };
+
 const toggleProjectExpand = (pid) => {
+  if (isReadOnlyMode.value) return;
   const i = expandedProjects.value.indexOf(pid);
   i > -1
     ? expandedProjects.value.splice(i, 1)
     : expandedProjects.value.push(pid);
 };
 
+// === SEARCH & FILTERS ===
+
 const debouncedSearch = () => {
   if (searchTimeout.value) clearTimeout(searchTimeout.value);
   searchTimeout.value = setTimeout(() => {}, 300);
 };
+
 const clearProjectSearch = () => {
+  if (isReadOnlyMode.value) return;
   projectSearchQuery.value = "";
 };
+
 const applyDateFilter = () =>
   addNotification(
     selectedDate.value
@@ -1051,25 +1203,131 @@ const applyDateFilter = () =>
       : "Фильтр по дате сброшен",
     "info"
   );
+
 const clearDateFilter = () => {
   selectedDate.value = null;
   addNotification("Фильтр по дате сброшен", "info");
 };
+
 const clearSpecializationFilter = () => {
   selectedSpecialization.value = null;
   applySpecializationFilter();
 };
 
+// === API: USER ROLE INIT ===
+
+const initUserRole = async () => {
+  try {
+    const userResponse = await api.get("/api/auth/me/", {
+      signal: abortController.value?.signal,
+    });
+    currentUser.value = userResponse.data;
+
+    const login = (
+      currentUser.value.login ||
+      currentUser.value.username ||
+      ""
+    ).toLowerCase();
+
+    console.log("👤 Текущий пользователь:", currentUser.value);
+    console.log("🔑 Логин:", login);
+
+    // Жесткая проверка по логину
+    if (login === "admin") {
+      isAdmin.value = true;
+      isSecretary.value = false;
+      console.log("✅ Роль: АДМИН");
+    } else {
+      // Все остальные пользователи считаются секретарями/пользователями с ограниченным доступом
+      isAdmin.value = false;
+      isSecretary.value = true;
+      console.log("✅ Роль: СЕКРЕТАРЬ (или пользователь)");
+    }
+
+    secretaryId.value = currentUser.value.ID;
+
+    // Загружаем данные
+    await loadSpecializations();
+
+    if (isSecretary.value && secretaryId.value) {
+      await loadSecretarySpecializations(secretaryId.value);
+      addNotification("Режим просмотра (Секретарь)", "info");
+    } else {
+      addNotification("Режим администратора", "success");
+    }
+  } catch (error) {
+    if (error.name !== "AbortError") {
+      console.error("❌ Ошибка инициализации пользователя:", error);
+      // В случае ошибки безопаснее закрыть доступ к редактированию
+      isSecretary.value = true;
+      isAdmin.value = false;
+      await loadSpecializations();
+    }
+  }
+};
+
+// === API: LOAD SECRETARY SPECIALIZATIONS ===
+// 🔥 ИСПРАВЛЕНО: Корректная обработка вложенной структуры ID_Specialization
+const loadSecretarySpecializations = async (userId) => {
+  if (!userId) return [];
+  try {
+    const response = await api.get("/api/secretary_specialization/", {
+      params: {
+        ID_Secretary: userId,
+        specialization_status: true,
+      },
+      signal: abortController.value?.signal,
+    });
+
+    const data = response.data.results || response.data || [];
+
+    // Извлекаем ID специальностей из вложенного объекта
+    const ids = [];
+    const map = {};
+
+    data.forEach((item) => {
+      // Проверяем структуру: item.ID_Specialization.ID
+      if (item.ID_Specialization && item.ID_Specialization.ID) {
+        const specId = item.ID_Specialization.ID;
+        const specName = item.ID_Specialization.Name;
+
+        ids.push(specId);
+        map[specId] = specName;
+      }
+    });
+
+    secretarySpecializations.value = ids;
+    secretarySpecializationsMap.value = map;
+
+    console.log("🎓 Специальности секретаря (IDs):", ids);
+    console.log("🎓 Карта имен:", map);
+
+    return ids;
+  } catch (error) {
+    if (error.name !== "AbortError") {
+      console.error("Ошибка загрузки специальностей секретаря:", error);
+      addNotification("Не удалось загрузить ваши направления", "error");
+    }
+    return [];
+  }
+};
+
+// === API: LOAD DATA ===
+
 const loadSpecializations = async () => {
   try {
-    const r = await api.get("/api/specializations/", {
+    let response;
+
+    // Сначала всегда загружаем полный список для маппинга имен
+    response = await api.get("/api/specializations/", {
       params: {
         page_size: 100,
         Status: true,
         signal: abortController.value?.signal,
       },
     });
-    const d = r.data.results || r.data;
+
+    const d = response.data.results || response.data;
     specializations.value = d.sort((a, b) => a.Name.localeCompare(b.Name));
     d.forEach((s) => {
       specializationNames.value[s.ID] = s.Name;
@@ -1091,7 +1349,6 @@ const loadDefenseSchedules = async () => {
       const p = { page_size: 100, page, signal: abortController.value?.signal };
       if (selectedSpecialization.value)
         p.specialization_id = selectedSpecialization.value;
-      // ✅ Заменено: axios.get(`${getApiBaseUrl()}/...`) → api.get("/...")
       const r = await api.get("/api/defenses/", { params: p });
       const d = r.data.results || r.data;
       all = [...all, ...d];
@@ -1116,7 +1373,6 @@ const loadProjects = async () => {
       page = 1,
       more = true;
     while (more) {
-      // ✅ Заменено: axios → api
       const r = await api.get("/api/projects/", {
         params: { page_size: 100, page, signal: abortController.value?.signal },
       });
@@ -1190,6 +1446,7 @@ const loadProtocols = async () => {
 };
 
 const applySpecializationFilter = async () => {
+  if (isReadOnlyMode.value) return;
   loading.value = true;
   try {
     await Promise.all([loadProtocols(), loadDefenseSchedules()]);
@@ -1209,8 +1466,14 @@ const applySpecializationFilter = async () => {
   }
 };
 
-// === ASSIGN / UNASSIGN ===
+// === ASSIGN / UNASSIGN (with role checks) ===
+
 const assignSelectedStudentsToSchedule = async (schedule) => {
+  if (isReadOnlyMode.value) {
+    addNotification("У вас нет прав для назначения проектов", "error");
+    return;
+  }
+
   const available = getAvailableSlots(schedule);
   if (
     available <= 0 ||
@@ -1248,7 +1511,6 @@ const assignSelectedStudentsToSchedule = async (schedule) => {
         );
         if (!pr || !pr.ID) continue;
         try {
-          // ✅ Заменено: axios.patch + хардкод → api.patch + относительный путь
           await api.patch(
             `/api/protocols/${pr.ID}/`,
             { ID_DefenseSchedule: schedule.ID },
@@ -1286,6 +1548,11 @@ const assignSelectedStudentsToSchedule = async (schedule) => {
 };
 
 const showUnassignConfirmation = (project, schedule) => {
+  if (isReadOnlyMode.value) {
+    addNotification("У вас нет прав для изменения расписания", "error");
+    return;
+  }
+
   const pData = getAssignedProjectsData(schedule.ID).find(
     (p) => p.project.ID === project.ID
   );
@@ -1319,6 +1586,11 @@ const confirmUnassignProject = async () => {
 const unassignProjectFromSchedule = (p, s) => showUnassignConfirmation(p, s);
 
 const unassignProjectFromScheduleLogic = async (project, schedule) => {
+  if (isReadOnlyMode.value) {
+    addNotification("У вас нет прав для изменения расписания", "error");
+    return;
+  }
+
   assigningProjects.value = true;
   try {
     const prs = protocolsFiltered.value.filter(
@@ -1362,8 +1634,10 @@ const unassignProjectFromScheduleLogic = async (project, schedule) => {
   }
 };
 
-// === MODALS ===
+// === MODALS (with role checks) ===
+
 const openCreateScheduleModal = () => {
+  if (isReadOnlyMode.value) return;
   newScheduleForm.value = {
     DateTime: "",
     Class: "",
@@ -1372,9 +1646,11 @@ const openCreateScheduleModal = () => {
   };
   showCreateModal.value = true;
 };
+
 const closeCreateModal = () => {
   showCreateModal.value = false;
 };
+
 const isCreateFormValid = computed(
   () =>
     newScheduleForm.value.DateTime &&
@@ -1383,11 +1659,15 @@ const isCreateFormValid = computed(
 );
 
 const createSchedule = async () => {
+  if (isReadOnlyMode.value) {
+    addNotification("У вас нет прав для создания расписания", "error");
+    return;
+  }
   if (!isCreateFormValid.value)
     return addNotification("Заполните обязательные поля", "error");
+
   loading.value = true;
   try {
-    // ✅ Заменено: axios.post + хардкод → api.post + относительный путь
     await api.post(
       "/api/defenses/",
       {
@@ -1415,17 +1695,24 @@ const createSchedule = async () => {
 };
 
 const openCapacityModal = (s) => {
+  if (isReadOnlyMode.value) return;
   editingSchedule.value = s;
   capacityForm.value.Count = s.Count;
   showCapacityModal.value = true;
 };
+
 const closeCapacityModal = () => {
   showCapacityModal.value = false;
   editingSchedule.value = null;
 };
 
 const updateScheduleCapacity = async () => {
+  if (isReadOnlyMode.value) {
+    addNotification("У вас нет прав для изменения вместимости", "error");
+    return;
+  }
   if (!editingSchedule.value || capacityForm.value.Count < 1) return;
+
   loading.value = true;
   try {
     await api.patch(
@@ -1450,6 +1737,7 @@ const updateScheduleCapacity = async () => {
 };
 
 // === FORMAT & NOTIFY ===
+
 const parseDateTime = (str) => {
   if (!str) return null;
   const n = str.replace("T", " ").substring(0, 19);
@@ -1462,10 +1750,12 @@ const parseDateTime = (str) => {
     m: String(min).padStart(2, "0"),
   };
 };
+
 const formatTime = (str) => {
   const p = parseDateTime(str);
   return p ? `${p.h}:${p.m}` : "Не указано";
 };
+
 const formatDate = (str) => {
   const p = parseDateTime(str);
   return p
@@ -1477,6 +1767,7 @@ const formatDate = (str) => {
       })
     : "Не указана";
 };
+
 const formatDateInput = (str) =>
   str ? str.replace("T", " ").substring(0, 10) : "";
 
@@ -1485,10 +1776,79 @@ const addNotification = (msg, type = "info") => {
   notifications.value.push(n);
   setTimeout(() => removeNotification(n.id), 5000);
 };
+
 const removeNotification = (id) => {
   const i = notifications.value.findIndex((n) => n.id === id);
   if (i > -1) notifications.value.splice(i, 1);
 };
+
+// === EXPORT TO WORD ===
+
+const downloadScheduleDoc = async (schedule) => {
+  try {
+    const assignedData = getAssignedProjectsData(schedule.ID);
+    if (!assignedData || assignedData.length === 0) {
+      addNotification("Нет проектов для экспорта", "info");
+      return;
+    }
+
+    let projectIndex = 1;
+    const projectsList = [];
+
+    assignedData.forEach((projectData) => {
+      const { project, assignedStudents } = projectData;
+      if (!assignedStudents?.length) return;
+
+      assignedStudents.forEach((student, idx) => {
+        const studentName = `${student.Surname || ""} ${student.Name || ""} ${
+          student.Patronymic || ""
+        }`.trim();
+        projectsList.push({
+          num: idx === 0 ? projectIndex : "",
+          title: idx === 0 ? project.Title || "" : "",
+          student_name: studentName,
+          group: idx === 0 ? student.ID_Group?.Name || "-" : "",
+        });
+      });
+      projectIndex++;
+    });
+
+    const data = {
+      date: formatDate(schedule.DateTime),
+      classroom: schedule.Class,
+      projects: projectsList,
+    };
+
+    const response = await fetch("/templates/temp.docx");
+    if (!response.ok)
+      throw new Error("Не удалось загрузить temp.docx из папки public");
+
+    const arrayBuffer = await response.arrayBuffer();
+    const zip = new PizZip(arrayBuffer);
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+    });
+
+    doc.render(data);
+
+    const out = doc.getZip().generate({
+      type: "blob",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+
+    const dateStr = new Date(schedule.DateTime).toISOString().slice(0, 10);
+    saveAs(out, `Ведомость_${schedule.Class}_${dateStr}.docx`);
+
+    addNotification("Ведомость скачана", "success");
+  } catch (error) {
+    console.error("Ошибка экспорта:", error);
+    addNotification(`Ошибка: ${error.message}`, "error");
+  }
+};
+
+// === REFRESH & LIFECYCLE ===
 
 const refreshData = async () => {
   if (abortController.value) abortController.value.abort();
@@ -1514,92 +1874,21 @@ const refreshData = async () => {
 };
 
 onMounted(async () => {
+  await initUserRole();
   await refreshData();
   setTimeout(async () => {
     if (protocols.value.length === 0) await loadProtocols();
   }, 1000);
 });
+
 onUnmounted(() => {
   if (abortController.value) abortController.value.abort();
   if (searchTimeout.value) clearTimeout(searchTimeout.value);
 });
-
-const downloadScheduleDoc = async (schedule) => {
-  try {
-    const assignedData = getAssignedProjectsData(schedule.ID);
-
-    if (!assignedData || assignedData.length === 0) {
-      addNotification("Нет проектов для экспорта", "info");
-      return;
-    }
-
-    // 1. Подготовка данных
-    let projectIndex = 1;
-    const projectsList = [];
-
-    assignedData.forEach((projectData) => {
-      const { project, assignedStudents } = projectData;
-
-      if (!assignedStudents?.length) return;
-
-      assignedStudents.forEach((student, idx) => {
-        const studentName = `${student.Surname || ""} ${student.Name || ""} ${
-          student.Patronymic || ""
-        }`.trim();
-
-        // Тема, номер и группа только у ПЕРВОГО студента проекта
-        projectsList.push({
-          num: idx === 0 ? projectIndex : "",
-          title: idx === 0 ? project.Title || "" : "",
-          student_name: studentName, // Полное имя
-          group: idx === 0 ? student.ID_Group?.Name || "-" : "",
-        });
-      });
-      projectIndex++;
-    });
-
-    const data = {
-      date: formatDate(schedule.DateTime),
-      classroom: schedule.Class,
-      projects: projectsList,
-    };
-
-    // 2. Загрузка шаблона
-    const response = await fetch("/templates/temp.docx");
-    if (!response.ok)
-      throw new Error("Не удалось загрузить temp.docx из папки public");
-
-    const arrayBuffer = await response.arrayBuffer();
-
-    // 3. Генерация
-    const zip = new PizZip(arrayBuffer);
-    const doc = new Docxtemplater(zip, {
-      paragraphLoop: true,
-      linebreaks: true,
-    });
-
-    doc.render(data);
-
-    // 4. Сохранение
-    const out = doc.getZip().generate({
-      type: "blob",
-      mimeType:
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    });
-
-    const dateStr = new Date(schedule.DateTime).toISOString().slice(0, 10);
-    saveAs(out, `Ведомость_${schedule.Class}_${dateStr}.docx`);
-
-    addNotification("Ведомость скачана", "success");
-  } catch (error) {
-    console.error("Ошибка:", error);
-    addNotification(`Ошибка: ${error.message}`, "error");
-  }
-};
 </script>
 
 <style scoped>
-/* === БАЗОВЫЕ === */
+/* === БАЗОВЫЕ СТИЛИ === */
 .schedule-container {
   padding: 2rem;
   max-width: 1600px;
@@ -1610,6 +1899,7 @@ const downloadScheduleDoc = async (schedule) => {
 .schedule-container * {
   box-sizing: border-box;
 }
+
 .schedule-header {
   margin-bottom: 2rem;
   background: white;
@@ -1728,6 +2018,11 @@ const downloadScheduleDoc = async (schedule) => {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
+.spec-select:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
 .spec-select-arrow {
   position: absolute;
   right: 0.75rem;
@@ -1748,16 +2043,26 @@ const downloadScheduleDoc = async (schedule) => {
   font-size: 0.8rem;
   cursor: pointer;
 }
-.spec-clear-btn:hover {
+.spec-clear-btn:hover:not(:disabled) {
   background: #fecaca;
 }
+.spec-clear-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .schedule-content {
   display: grid;
   grid-template-columns: 1fr 2fr;
   gap: 2rem;
 }
 
-/* === ПУЛ === */
+/* 🔥 Новое правило: растягиваем на всю ширину, если левая панель скрыта */
+.schedule-content.full-width-mode {
+  grid-template-columns: 1fr;
+}
+
+/* === ПУЛ ПРОЕКТОВ === */
 .unassigned-pool {
   background: white;
   border-radius: 0.75rem;
@@ -1816,6 +2121,9 @@ const downloadScheduleDoc = async (schedule) => {
   height: 1rem;
   cursor: pointer;
 }
+.filter-checkbox input:disabled {
+  cursor: not-allowed;
+}
 .search-box {
   position: relative;
   display: flex;
@@ -1844,6 +2152,10 @@ const downloadScheduleDoc = async (schedule) => {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
+.search-input:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
 .search-clear {
   position: absolute;
   right: 0.25rem;
@@ -1854,10 +2166,15 @@ const downloadScheduleDoc = async (schedule) => {
   padding: 0.25rem;
   border-radius: 0.25rem;
 }
-.search-clear:hover {
+.search-clear:hover:not(:disabled) {
   color: #6b7280;
   background: #f3f4f6;
 }
+.search-clear:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .projects-grid {
   padding: 1rem;
   display: flex;
@@ -1885,6 +2202,15 @@ const downloadScheduleDoc = async (schedule) => {
 }
 .project-card.partial-project {
   border-left: 4px solid #f59e0b;
+}
+.project-card.card-readonly {
+  cursor: default !important;
+  opacity: 0.95;
+}
+.project-card.card-readonly:hover {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  transform: none !important;
 }
 .project-header {
   display: flex;
@@ -1919,6 +2245,9 @@ const downloadScheduleDoc = async (schedule) => {
   height: 1rem;
   cursor: pointer;
   margin: 0;
+}
+.project-checkbox input:disabled {
+  cursor: not-allowed;
 }
 .project-title {
   font-weight: 600;
@@ -1971,6 +2300,14 @@ const downloadScheduleDoc = async (schedule) => {
   background: #3b82f6;
   color: white;
 }
+.student-tag.tag-readonly {
+  cursor: default !important;
+  opacity: 0.9;
+}
+.student-tag.tag-readonly:hover {
+  background: #dbeafe !important;
+  transform: none !important;
+}
 .student-group {
   color: #6b7280;
   font-size: 0.625rem;
@@ -2003,6 +2340,7 @@ const downloadScheduleDoc = async (schedule) => {
   font-size: 0.75rem;
   color: #6b7280;
 }
+
 .selected-projects-panel {
   padding: 1rem;
   background: #eff6ff;
@@ -2087,6 +2425,7 @@ const downloadScheduleDoc = async (schedule) => {
 .remove-student-btn:hover {
   background: #fee2e2;
 }
+
 .empty-pool {
   display: flex;
   flex-direction: column;
@@ -2166,6 +2505,10 @@ const downloadScheduleDoc = async (schedule) => {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
+.date-input:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
 .date-clear {
   background: none;
   border: none;
@@ -2174,10 +2517,15 @@ const downloadScheduleDoc = async (schedule) => {
   padding: 0.25rem;
   border-radius: 0.25rem;
 }
-.date-clear:hover {
+.date-clear:hover:not(:disabled) {
   color: #6b7280;
   background: #f3f4f6;
 }
+.date-clear:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .create-schedule-btn {
   display: flex;
   align-items: center;
@@ -2225,6 +2573,7 @@ const downloadScheduleDoc = async (schedule) => {
     transform: rotate(360deg);
   }
 }
+
 .loading-state,
 .empty-schedule {
   display: flex;
@@ -2268,6 +2617,10 @@ const downloadScheduleDoc = async (schedule) => {
   border-color: #fecaca;
   background: #fef2f2;
 }
+.schedule-card.card-readonly {
+  opacity: 0.95;
+}
+
 .schedule-header-card {
   display: flex;
   justify-content: space-between;
@@ -2342,10 +2695,15 @@ const downloadScheduleDoc = async (schedule) => {
   display: flex;
   align-items: center;
 }
-.edit-capacity-btn:hover {
+.edit-capacity-btn:hover:not(:disabled) {
   color: #3b82f6;
   background: #eff6ff;
 }
+.edit-capacity-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .assigned-projects {
   display: flex;
   flex-direction: column;
@@ -2397,8 +2755,6 @@ const downloadScheduleDoc = async (schedule) => {
   width: 0.875rem;
   height: 0.875rem;
 }
-
-/* 🔥 Стиль для заблокированной кнопки удаления */
 .btn-disabled-graded {
   color: #d1d5db !important;
   cursor: not-allowed !important;
@@ -2408,7 +2764,6 @@ const downloadScheduleDoc = async (schedule) => {
   background: transparent !important;
   color: #d1d5db !important;
 }
-
 .assigned-project-students {
   display: flex;
   flex-wrap: wrap;
@@ -2438,6 +2793,7 @@ const downloadScheduleDoc = async (schedule) => {
   font-size: 0.75rem;
   color: #6b7280;
 }
+
 .assignment-section {
   border-top: 1px solid #e5e7eb;
   padding-top: 1rem;
@@ -2683,6 +3039,10 @@ const downloadScheduleDoc = async (schedule) => {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
+.form-input:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
 .form-input[type="number"] {
   -moz-appearance: textfield;
 }
@@ -2746,9 +3106,13 @@ const downloadScheduleDoc = async (schedule) => {
   color: #475569;
   transition: all 0.2s;
 }
-.capacity-btn:hover {
+.capacity-btn:hover:not(:disabled) {
   background: #e2e8f0;
   border-color: #94a3b8;
+}
+.capacity-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 .capacity-input {
   width: 4rem;
@@ -2836,12 +3200,13 @@ const downloadScheduleDoc = async (schedule) => {
     width: 100%;
   }
 }
+
 .download-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: #2563eb; /* Синий цвет Word */
+  background: #2563eb;
   color: white;
   border: none;
   border-radius: 0.375rem;
@@ -2854,4 +3219,3 @@ const downloadScheduleDoc = async (schedule) => {
   background: #1d4ed8;
 }
 </style>
-```
