@@ -542,9 +542,9 @@ export default {
       selectedProjectText: "",
       expandedProjects: {},
       templateBuffer: null,
-      qualifications: {}, // qualifications[specId] = массив квалификаций
-      loadingQualifications: {}, // loadingQualifications[specId] = boolean
-      selectedQualifications: {}, // selectedQualifications[studentId] = qualificationId (или null)
+      qualifications: {},
+      loadingQualifications: {},
+      selectedQualifications: {},
     };
   },
   mounted() {
@@ -553,7 +553,7 @@ export default {
     this.loadTemplate();
   },
   methods: {
-    // Инициализация и загрузка данных
+    // === Инициализация ===
     initializeSecretary() {
       const secretary = JSON.parse(localStorage.getItem("secretary"));
       if (secretary?.ID) {
@@ -597,17 +597,15 @@ export default {
       }
     },
 
-    // === ВСПОМОГАТЕЛЬНЫЙ МЕТОД: получить квалификации для студента ===
     getQualificationsForStudent(student) {
       const specId = student.ID_Specialization?.ID || student.ID_Specialization;
       return specId ? this.qualifications[specId] || [] : [];
     },
 
-    // === ОБНОВЛЕНИЕ КВАЛИФИКАЦИИ СТУДЕНТА (отдельный вызов) ===
     async updateStudentQualification(studentId, qualificationId) {
       try {
         await api.patch(`/api/students/${studentId}/`, {
-          ID_Qualification: qualificationId || null, // null если не выбрана
+          ID_Qualification: qualificationId || null,
         });
         return true;
       } catch (error) {
@@ -617,6 +615,18 @@ export default {
         );
         return false;
       }
+    },
+
+    // === НОВЫЙ МЕТОД: Обработчик изменения квалификации ===
+    async handleQualificationChange(studentId, newQualId) {
+      // Обновляем локальное состояние
+      this.selectedQualifications[studentId] = newQualId || null;
+
+      // Опционально: сразу сохраняем на сервер (раскомментируйте, если нужно автосохранение)
+      // const student = Object.values(this.students).flat().find(s => s.ID === studentId);
+      // if (student && student.ID_Qualification !== undefined) {
+      //   await this.updateStudentQualification(studentId, newQualId || null);
+      // }
     },
 
     async loadSpecializations() {
@@ -666,19 +676,15 @@ export default {
           params: { defense_schedule_id: this.selectedDefense },
         });
 
-        // ✅ Шаг 1: Фильтруем только неутверждённые проекты
         let projects = response.data.filter((project) => !project.isApproved);
-
         this.initializeExpandedProjects();
 
-        // ✅ Шаг 2: Загружаем студентов и вопросы для ВСЕХ проектов
         for (const project of projects) {
           await this.loadStudentsForProject(project.ID);
           await this.loadQuestionsForProject(project.ID);
           await this.checkProjectApprovalStatus(project.ID);
         }
 
-        // ✅ Шаг 3: ФИЛЬТРУЕМ — оставляем только проекты со студентами
         this.projects = projects.filter(
           (project) => this.students[project.ID]?.length > 0
         );
@@ -689,11 +695,11 @@ export default {
         this.loadingProjects = false;
       }
     },
+
     async loadStudentsForProject(projectId) {
       this.loadingStudents[projectId] = true;
       this.errorStudents[projectId] = null;
       try {
-        // ✅ Загружаем только студентов с protocol__Status=false и нужным ID_DefenseSchedule
         const response = await api.get("/api/students/", {
           params: {
             ID_Project: projectId,
@@ -702,9 +708,8 @@ export default {
           },
         });
         const students = response.data;
-
-        // ✅ Фильтруем только студентов с оценкой
         const studentsWithGrade = students.filter((s) => s.grade);
+
         const specIds = [
           ...new Set(
             studentsWithGrade
@@ -717,12 +722,13 @@ export default {
           await this.loadQualificationsForSpecialization(specId);
         }
 
-        // === НОВОЕ: инициализируем выбранные квалификации из данных студента ===
+        // Инициализируем выбранные квалификации из данных студента
         for (const student of studentsWithGrade) {
           if (student.ID_Qualification) {
             this.selectedQualifications[student.ID] = student.ID_Qualification;
           }
         }
+
         for (const student of studentsWithGrade) {
           try {
             const protocolResponse = await api.get("/api/protocols/", {
@@ -734,7 +740,6 @@ export default {
             if (protocolResponse.data?.length > 0) {
               const protocol = protocolResponse.data[0];
               student.Grade = protocol.Grade;
-              // Сохраняем время защиты из протокола
               if (
                 !this.projectDefenseTimes[projectId] &&
                 protocol.DefenseStartTime &&
@@ -805,12 +810,10 @@ export default {
       }
     },
 
-    // Проверка статуса утверждения проекта
     async checkProjectApprovalStatus(projectId) {
       const students = this.students[projectId];
       if (!students?.length) return;
       try {
-        // Проверяем, что у ВСЕХ студентов протоколы имеют Status: true
         const checks = students.map(async (student) => {
           try {
             const res = await api.get("/api/protocols/", {
@@ -828,15 +831,12 @@ export default {
         const isApproved =
           results.every((r) => r === true) && results.length > 0;
 
-        // ✅ Если проект утверждён — удаляем его из списка
         if (isApproved) {
           const projectIndex = this.projects.findIndex(
             (p) => p.ID === projectId
           );
           if (projectIndex !== -1) {
-            // ✅ Удаляем проект из массива
             this.projects.splice(projectIndex, 1);
-            // ✅ Очищаем связанные данные
             delete this.students[projectId];
             delete this.questions[projectId];
             delete this.projectDefenseTimes[projectId];
@@ -863,7 +863,6 @@ export default {
     handleDefenseChange() {
       this.projects = [];
       this.students = {};
-      // ✅ ДОБАВЛЕНО: сбрасываем все связанные объекты
       this.studentsLoading = {};
       this.studentsError = {};
       this.questions = {};
@@ -877,18 +876,24 @@ export default {
         this.loadProjects();
       }
     },
-    // === ВСПОМОГАТЕЛЬНЫЙ МЕТОД: получить название квалификации ===
+
+    // === УЛУЧШЕННЫЙ МЕТОД: получение названия квалификации ===
     getQualificationName(qualificationId, student) {
       if (!qualificationId) return "";
-      // Если это объект (уже загружен)
-      if (typeof qualificationId === "object") return qualificationId.Name;
+      if (typeof qualificationId === "object")
+        return qualificationId.Name || "";
 
-      // Ищем в загруженных квалификациях
-      const specId = student.ID_Specialization?.ID || student.ID_Specialization;
+      const specId =
+        student?.ID_Specialization?.ID || student?.ID_Specialization;
+      if (!specId) return `ID: ${qualificationId}`;
+
       const quals = this.qualifications[specId] || [];
       const qual = quals.find((q) => q.ID === qualificationId);
-      return qual?.Name || "Загрузка...";
+
+      // Фоллбэк: если не нашли в кэше, возвращаем сам ID
+      return qual?.Name || `ID: ${qualificationId}`;
     },
+
     // === Форматирование ===
     formatDateTime(dateTimeStr) {
       if (!dateTimeStr) return "";
@@ -927,10 +932,10 @@ export default {
       const parts = timeStr.split(":");
       return { hours: parts[0] || "00", minutes: parts[1] || "00" };
     },
+
     formatDateTimeForDoc(dateTimeStr) {
       if (!dateTimeStr) return "Не указана";
       const date = new Date(dateTimeStr);
-
       const months = [
         "января",
         "февраля",
@@ -945,8 +950,6 @@ export default {
         "ноября",
         "декабря",
       ];
-
-      // ✅ Добавляем год и "г." в конце
       return `${date.getDate()} ${
         months[date.getMonth()]
       } ${date.getFullYear()} г.`;
@@ -1073,7 +1076,7 @@ export default {
       }
     },
 
-    // Распределение вопросов (первый шаг)
+    // Распределение вопросов
     async distributeQuestionsForProject(project) {
       const students = this.students[project.ID];
       if (!students?.length) {
@@ -1091,7 +1094,6 @@ export default {
       this.clearMessages();
 
       try {
-        // 1. Загружаем все доступные вопросы (Status: false)
         const questionsRes = await api.get("/api/questions/", {
           params: { ID_Project: project.ID, Status: false },
         });
@@ -1104,35 +1106,31 @@ export default {
           );
         }
 
-        // 2. Перемешиваем и распределяем
         const shuffled = [...questions].sort(() => Math.random() - 0.5);
         const assignments = [];
-        const assignedQuestionIds = new Set(); // ✅ Отслеживаем назначенные вопросы
+        const assignedQuestionIds = new Set();
 
         let idx = 0;
-        // Первый вопрос каждому
         for (let i = 0; i < students.length && idx < shuffled.length; i++) {
           assignments.push({
             studentId: students[i].ID,
             q1: shuffled[idx].ID,
             q2: null,
           });
-          assignedQuestionIds.add(shuffled[idx].ID); // ✅ Добавляем в набор
+          assignedQuestionIds.add(shuffled[idx].ID);
           idx++;
         }
 
-        // Второй вопрос, если есть
         let sIdx = 0;
         while (idx < shuffled.length && sIdx < students.length) {
           if (assignments[sIdx]) {
             assignments[sIdx].q2 = shuffled[idx].ID;
-            assignedQuestionIds.add(shuffled[idx].ID); // ✅ Добавляем в набор
+            assignedQuestionIds.add(shuffled[idx].ID);
           }
           idx++;
           sIdx++;
         }
 
-        // 3. Обновляем протоколы в БД
         for (const a of assignments) {
           const protoRes = await api.get("/api/protocols/", {
             params: {
@@ -1151,7 +1149,6 @@ export default {
           }
         }
 
-        // ✅ 4. Обновляем Статус ТОЛЬКО для назначенных вопросов
         for (const qId of assignedQuestionIds) {
           try {
             await api.patch(`/api/questions/${qId}/`, { Status: true });
@@ -1160,10 +1157,8 @@ export default {
           }
         }
 
-        // ✅ 5. Обновляем статус проекта
         await api.patch(`/api/projects/${project.ID}/`);
 
-        // 6. Обновляем локальные данные
         project.questionsDistributed = true;
         this.successMessage = `Вопросы распределены для "${project.Title}"!`;
         await this.loadStudentsForProject(project.ID);
@@ -1190,7 +1185,6 @@ export default {
       this.generatingDocx[student.ID] = true;
 
       try {
-        // Находим протокол студента
         const protoRes = await api.get("/api/protocols/", {
           params: {
             ID_Student: student.ID,
@@ -1264,7 +1258,6 @@ export default {
 
       try {
         let successCount = 0;
-        // ✅ Последовательная генерация
         for (const student of students) {
           try {
             const protoRes = await api.get("/api/protocols/", {
@@ -1276,7 +1269,6 @@ export default {
             if (protoRes.data?.length > 0) {
               await this.generateDocxForStudent(student, project);
               successCount++;
-              // Небольшая пауза для обработки браузером
               await new Promise((resolve) => setTimeout(resolve, 300));
             }
           } catch (e) {
@@ -1292,7 +1284,7 @@ export default {
       }
     },
 
-    // === ✅ Подготовка данных для шаблона ===
+    // === ✅ ИСПРАВЛЕННЫЙ МЕТОД: Подготовка данных для шаблона ===
     async prepareTemplateData(student, protocol, project) {
       const specialization = student.ID_Specialization;
       const commission = protocol.ID_DefenseSchedule?.ID_Commission;
@@ -1302,27 +1294,18 @@ export default {
       const endTime = this.parseTime(protocol.DefenseEndTime);
       const dateTime = this.formatDateTimeForDoc(defenseSchedule?.DateTime);
 
-      // === Загрузка состава комиссии (ИСПРАВЛЕННЫЙ ВАРИАНТ) ===
       let commissionMembers = [];
       if (commission?.ID) {
         try {
-          // ✅ Запрос к списку с фильтром по ID комиссии
-          // Эндпоинт: /api/composition/?commission_id=5
           const response = await api.get(
             `/api/commission_compositions/?commission_id=${commission.ID}`
           );
-
-          // DRF по умолчанию возвращает "плоский" список (массив),
-          // но на всякий случай проверяем тип данных
           commissionMembers = Array.isArray(response.data)
             ? response.data
-            : response.data.results || []; // Если используется пагинация
-
-          // ✅ Если нужны только данные участников (без роли и лишнего), можно "вытащить" их:
-          // commissionMembers = commissionMembers.map(item => item.ID_Member);
+            : response.data.results || [];
         } catch (e) {
           console.error("Ошибка загрузки состава комиссии:", e);
-          commissionMembers = []; // Сбрасываем при ошибке
+          commissionMembers = [];
         }
       }
       const chairman = commissionMembers.find((m) => m.Role === "Председатель");
@@ -1333,7 +1316,6 @@ export default {
           m.Role === "Член аттестационной комиссии "
       );
 
-      // Загрузка вопросов
       let question1 = " ",
         question2 = " ";
       if (protocol.ID_Question) {
@@ -1353,7 +1335,6 @@ export default {
         }
       }
 
-      // Склонение ФИО
       let studentDative = this.getFullName(student);
       try {
         const dative = await api.post("/api/fio_to_dative/", {
@@ -1363,6 +1344,26 @@ export default {
       } catch (e) {
         console.error("Ошибка склонения:", e);
       }
+
+      // === ✅ ИСПРАВЛЕНИЕ: Приоритет локально выбранной квалификации ===
+      const qualificationValue = (() => {
+        const localQualId = this.selectedQualifications[student.ID];
+        if (localQualId) {
+          return this.getQualificationName(localQualId, student);
+        }
+        return (
+          this.getQualificationName(student.ID_Qualification, student) ||
+          "Не указана"
+        );
+      })();
+
+      // Лог для отладки (можно убрать в продакшене)
+      console.log("Template data for student:", {
+        studentId: student.ID,
+        dbQualification: student.ID_Qualification,
+        localSelection: this.selectedQualifications[student.ID],
+        result: qualificationValue,
+      });
 
       return {
         starthours: startTime.hours,
@@ -1377,10 +1378,7 @@ export default {
         Title: project?.Title || "Не указан",
         supervisor: project?.Supervisor || "Не указан",
         grade: protocol.Grade || "Не указана",
-        // В методе prepareTemplateData, внутри return:
-        qualification:
-          this.getQualificationName(student.ID_Qualification, student) ||
-          "Не указана",
+        qualification: qualificationValue,
         secretary: secretary
           ? this.getInitials(secretary.ID_Member)
           : "Не указан",
@@ -1391,7 +1389,7 @@ export default {
       };
     },
 
-    //  4. Утверждение проекта (последовательное обновление статусов) ===
+    // Утверждение проекта
     async approveProject(project) {
       const students = this.students[project.ID];
       if (!students?.length) {
@@ -1413,21 +1411,21 @@ export default {
       this.clearMessages();
 
       try {
+        // Сохраняем квалификации всех студентов
         for (const student of students) {
           const qualId = this.selectedQualifications[student.ID];
-          // Обновляем только если квалификация изменена или выбрана впервые
           if (qualId !== undefined && qualId !== student.ID_Qualification) {
             const success = await this.updateStudentQualification(
               student.ID,
               qualId
             );
             if (success) {
-              // Обновляем локально, чтобы отобразить в интерфейсе
               student.ID_Qualification = qualId;
             }
           }
         }
-        // ✅ Последовательное утверждение каждого протокола
+
+        // Утверждаем протоколы
         for (const student of students) {
           try {
             const protoRes = await api.get("/api/protocols/", {
@@ -1438,14 +1436,11 @@ export default {
             });
             if (protoRes.data?.length > 0) {
               const protocol = protoRes.data[0];
-              // ✅ Обновляем статус протокола
               await api.patch(`/api/protocols/${protocol.ID}/`, {
                 Status: true,
               });
-              // ✅ Обновляем локально данные студента
               student.Grade = protocol.Grade || student.Grade;
 
-              // ✅ Загружаем вопросы для студента
               student.questions = {};
               if (protocol.ID_Question) {
                 try {
@@ -1468,7 +1463,6 @@ export default {
                 }
               }
 
-              // ✅ Сохраняем время защиты
               if (protocol.DefenseStartTime && protocol.DefenseEndTime) {
                 this.projectDefenseTimes[project.ID] = {
                   startTime: this.formatTime(protocol.DefenseStartTime),
@@ -1481,19 +1475,13 @@ export default {
           }
         }
 
-        // ✅ Обновляем статус проекта
         project.isApproved = true;
         project.questionsDistributed = true;
 
         this.successMessage = `Протоколы проекта "${project.Title}" успешно утверждены!`;
 
-        // ✅ Перезагружаем студентов для отображения всех данных
         await this.loadStudentsForProject(project.ID);
-
-        // ✅ УДАЛЯЕМ проект из списка после утверждения
         this.projects = this.projects.filter((p) => p.ID !== project.ID);
-
-        // ✅ Очищаем данные проекта
         delete this.students[project.ID];
         delete this.questions[project.ID];
         delete this.projectDefenseTimes[project.ID];

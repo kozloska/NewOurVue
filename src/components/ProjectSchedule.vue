@@ -334,29 +334,48 @@
                   {{ getSpecializationName(schedule.ID_Specialization) }}
                 </div>
               </div>
+
               <div class="schedule-info">
                 <div class="schedule-class">
                   <MapPinIcon class="info-icon" />
                   {{ schedule.Class }}
                 </div>
-                <div class="schedule-capacity">
-                  <FolderIcon class="info-icon" />
-                  {{ getAssignedProjectsCount(schedule.ID) }} /
-                  {{ schedule.Count }}
-                  <span
-                    v-if="getAvailableSlots(schedule) > 0"
-                    class="slots-available"
+
+                <!-- Блок вместимости и кнопка редактирования рядом -->
+                <div
+                  class="schedule-capacity-wrapper"
+                  style="display: flex; align-items: center; gap: 8px"
+                >
+                  <div class="schedule-capacity">
+                    <FolderIcon class="info-icon" />
+                    {{ getAssignedProjectsCount(schedule.ID) }} /
+                    {{ schedule.Count }}
+                    <span
+                      v-if="getAvailableSlots(schedule) > 0"
+                      class="slots-available"
+                    >
+                      (свободно: {{ getAvailableSlots(schedule) }})
+                    </span>
+                  </div>
+
+                  <!-- Кнопка карандаша теперь здесь, сразу после текста -->
+                  <button
+                    @click="openCapacityModal(schedule)"
+                    class="edit-capacity-btn"
+                    title="Изменить количество мест"
                   >
-                    (свободно: {{ getAvailableSlots(schedule) }})
-                  </span>
+                    <PencilIcon class="btn-icon" />
+                  </button>
                 </div>
 
+                <!-- Кнопка скачивания Word -->
                 <button
-                  @click="openCapacityModal(schedule)"
-                  class="edit-capacity-btn"
-                  title="Изменить количество мест"
+                  @click="downloadScheduleDoc(schedule)"
+                  class="download-btn"
+                  title="Скачать ведомость (Word)"
                 >
-                  <PencilIcon class="btn-icon" />
+                  <DownloadIcon class="btn-icon" />
+                  <span class="btn-text">Word</span>
                 </button>
               </div>
             </div>
@@ -707,6 +726,9 @@
 </template>
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from "vue";
+import Docxtemplater from "docxtemplater";
+import PizZip from "pizzip";
+import { saveAs } from "file-saver";
 import api from "@/services/api";
 import {
   CalendarIcon,
@@ -727,6 +749,7 @@ import {
   ChevronDownIcon,
   PlusIcon,
   PencilIcon,
+  DownloadIcon,
 } from "lucide-vue-next";
 
 // === STATE ===
@@ -1500,6 +1523,79 @@ onUnmounted(() => {
   if (abortController.value) abortController.value.abort();
   if (searchTimeout.value) clearTimeout(searchTimeout.value);
 });
+
+const downloadScheduleDoc = async (schedule) => {
+  try {
+    const assignedData = getAssignedProjectsData(schedule.ID);
+
+    if (!assignedData || assignedData.length === 0) {
+      addNotification("Нет проектов для экспорта", "info");
+      return;
+    }
+
+    // 1. Подготовка данных
+    let projectIndex = 1;
+    const projectsList = [];
+
+    assignedData.forEach((projectData) => {
+      const { project, assignedStudents } = projectData;
+
+      if (!assignedStudents?.length) return;
+
+      assignedStudents.forEach((student, idx) => {
+        const studentName = `${student.Surname || ""} ${student.Name || ""} ${
+          student.Patronymic || ""
+        }`.trim();
+
+        // Тема, номер и группа только у ПЕРВОГО студента проекта
+        projectsList.push({
+          num: idx === 0 ? projectIndex : "",
+          title: idx === 0 ? project.Title || "" : "",
+          student_name: studentName, // Полное имя
+          group: idx === 0 ? student.ID_Group?.Name || "-" : "",
+        });
+      });
+      projectIndex++;
+    });
+
+    const data = {
+      date: formatDate(schedule.DateTime),
+      classroom: schedule.Class,
+      projects: projectsList,
+    };
+
+    // 2. Загрузка шаблона
+    const response = await fetch("/templates/temp.docx");
+    if (!response.ok)
+      throw new Error("Не удалось загрузить temp.docx из папки public");
+
+    const arrayBuffer = await response.arrayBuffer();
+
+    // 3. Генерация
+    const zip = new PizZip(arrayBuffer);
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+    });
+
+    doc.render(data);
+
+    // 4. Сохранение
+    const out = doc.getZip().generate({
+      type: "blob",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+
+    const dateStr = new Date(schedule.DateTime).toISOString().slice(0, 10);
+    saveAs(out, `Ведомость_${schedule.Class}_${dateStr}.docx`);
+
+    addNotification("Ведомость скачана", "success");
+  } catch (error) {
+    console.error("Ошибка:", error);
+    addNotification(`Ошибка: ${error.message}`, "error");
+  }
+};
 </script>
 
 <style scoped>
@@ -2739,6 +2835,23 @@ onUnmounted(() => {
   .modal-confirm {
     width: 100%;
   }
+}
+.download-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #2563eb; /* Синий цвет Word */
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+.download-btn:hover {
+  background: #1d4ed8;
 }
 </style>
 ```

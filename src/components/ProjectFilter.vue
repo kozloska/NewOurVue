@@ -324,7 +324,10 @@ export default {
         const response = await api.get("/api/defenses/", {
           params: { specialization_id: this.selectedSpecialization },
         });
-        this.schedules = response.data;
+        // Сортировка по возрастанию (от ранних к поздним)
+        this.schedules = response.data.sort((a, b) => {
+          return new Date(a.DateTime) - new Date(b.DateTime);
+        });
       } catch (error) {
         console.error("Ошибка загрузки расписания:", error);
         this.errorSchedules = "Не удалось загрузить расписание защит";

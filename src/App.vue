@@ -61,7 +61,6 @@
         </router-link>
 
         <router-link
-          v-if="isAdmin"
           to="/projectschedule"
           class="menu-item"
           active-class="active"
