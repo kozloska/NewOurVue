@@ -579,7 +579,7 @@ export default {
 
     async loadTemplate() {
       try {
-        const response = await fetch("/templates/test.docx");
+        const response = await fetch("/pck/templates/test.docx");
         if (!response.ok)
           throw new Error(`HTTP error! status: ${response.status}`);
         this.templateBuffer = await response.arrayBuffer();

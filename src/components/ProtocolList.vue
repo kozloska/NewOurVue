@@ -227,7 +227,7 @@ export default {
     async loadTemplate() {
       try {
         // ✅ fetch оставляем как есть — это загрузка статического файла, не API
-        const response = await fetch("/pck/templates/test.docx");
+        const response = await fetch("/templates/test.docx");
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
