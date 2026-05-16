@@ -671,7 +671,7 @@
               type="text"
               v-model="newScheduleForm.Class"
               class="form-input"
-              placeholder="Например: 301а, зал конференций"
+              placeholder=""
               required
             />
           </div>
@@ -688,112 +688,103 @@
             />
           </div>
 
-          <div class="form-group" v-if="specializations.length > 0">
-            <label
-              >Направление подготовки
-              <span class="optional">(необязательно)</span></label
-            >
-            <select
-              v-model="newScheduleForm.ID_Specialization"
-              class="form-input"
-            >
-              <option :value="null" disabled>Выберите направление...</option>
-              <option
-                v-for="spec in specializations"
-                :key="spec.ID"
-                :value="spec.ID"
-              >
-                {{ spec.Name }}
-              </option>
-            </select>
-            <small class="hint"
-              >Оставьте пустым, если расписание общее для всех программ</small
-            >
-          </div>
-        </div>
-
-        <div class="modal-footer">
-          <button @click="closeCreateModal" class="modal-cancel">Отмена</button>
-          <button
-            @click="createSchedule"
-            class="modal-confirm"
-            :disabled="!isCreateFormValid || loading"
+          div class="form-group" v-if="specializations.length > 0">
+          <label>
+            Направление подготовки <span class="required">*</span>
+          </label>
+          <select
+            v-model="newScheduleForm.ID_Specialization"
+            class="form-input"
+            required
           >
-            {{ loading ? "Создание..." : "Создать" }}
-          </button>
+            <option :value="null" disabled>Выберите направление...</option>
+            <option
+              v-for="spec in availableSpecializationsForCreate"
+              :key="spec.ID"
+              :value="spec.ID"
+            >
+              {{ spec.Name }}
+            </option>
+          </select>
+          <small class="hint required-field"
+            >Поле обязательно для заполнения</small
+          >
         </div>
       </div>
+
+      <div class="modal-footer">
+        <button @click="closeCreateModal" class="modal-cancel">Отмена</button>
+        <button
+          @click="createSchedule"
+          class="modal-confirm"
+          :disabled="!isCreateFormValid || loading"
+        >
+          {{ loading ? "Создание..." : "Создать" }}
+        </button>
+      </div>
     </div>
+  </div>
 
-    <!-- Модальное окно: Изменение вместимости (скрыто для секретаря) -->
-    <div
-      v-if="showCapacityModal && editingSchedule && !isReadOnlyMode"
-      class="modal-overlay"
-      @click.self="closeCapacityModal"
-    >
-      <div class="modal">
-        <div class="modal-header">
-          <h3>✏️ Изменить вместимость</h3>
-          <button
-            @click="closeCapacityModal"
-            class="modal-close"
-            title="Закрыть"
-          >
-            <XIcon class="btn-icon" />
-          </button>
-        </div>
+  <!-- Модальное окно: Изменение вместимости (скрыто для секретаря) -->
+  <div
+    v-if="showCapacityModal && editingSchedule && !isReadOnlyMode"
+    class="modal-overlay"
+    @click.self="closeCapacityModal"
+  >
+    <div class="modal">
+      <div class="modal-header">
+        <h3>✏️ Изменить вместимость</h3>
+        <button @click="closeCapacityModal" class="modal-close" title="Закрыть">
+          <XIcon class="btn-icon" />
+        </button>
+      </div>
 
-        <div class="modal-body">
-          <p style="margin-bottom: 1rem; color: #4b5563">
-            <strong>{{ formatDate(editingSchedule.DateTime) }}</strong
-            >,
-            {{ editingSchedule.Class }}
-          </p>
+      <div class="modal-body">
+        <p style="margin-bottom: 1rem; color: #4b5563">
+          <strong>{{ formatDate(editingSchedule.DateTime) }}</strong
+          >,
+          {{ editingSchedule.Class }}
+        </p>
 
-          <div class="form-group">
-            <label>Максимальное количество проектов</label>
-            <div class="capacity-controls">
-              <button
-                @click="
-                  capacityForm.Count = Math.max(1, capacityForm.Count - 1)
-                "
-                class="capacity-btn"
-              >
-                −
-              </button>
-              <input
-                type="number"
-                v-model.number="capacityForm.Count"
-                class="form-input capacity-input"
-                min="1"
-                max="100"
-              />
-              <button
-                @click="capacityForm.Count = capacityForm.Count + 1"
-                class="capacity-btn"
-              >
-                +
-              </button>
-            </div>
-            <small class="hint">
-              Сейчас назначено:
-              {{ getAssignedProjectsCount(editingSchedule.ID) }}
-            </small>
+        <div class="form-group">
+          <label>Максимальное количество проектов</label>
+          <div class="capacity-controls">
+            <button
+              @click="capacityForm.Count = Math.max(1, capacityForm.Count - 1)"
+              class="capacity-btn"
+            >
+              −
+            </button>
+            <input
+              type="number"
+              v-model.number="capacityForm.Count"
+              class="form-input capacity-input"
+              min="1"
+              max="100"
+            />
+            <button
+              @click="capacityForm.Count = capacityForm.Count + 1"
+              class="capacity-btn"
+            >
+              +
+            </button>
           </div>
+          <small class="hint">
+            Сейчас назначено:
+            {{ getAssignedProjectsCount(editingSchedule.ID) }}
+          </small>
         </div>
+      </div>
 
-        <div class="modal-footer">
-          <button @click="closeCapacityModal" class="modal-cancel">
-            Отмена
-          </button>
-          <button
-            @click="updateScheduleCapacity"
-            class="modal-confirm"
-            :disabled="loading"
-          >
-            {{ loading ? "Сохранение..." : "Сохранить" }}
-          </button>
-        </div>
+      <div class="modal-footer">
+        <button @click="closeCapacityModal" class="modal-cancel">Отмена</button>
+        <button
+          @click="updateScheduleCapacity"
+          class="modal-confirm"
+          :disabled="loading"
+        >
+          {{ loading ? "Сохранение..." : "Сохранить" }}
+        </button>
       </div>
     </div>
   </div>
@@ -1570,7 +1561,15 @@ const showUnassignConfirmation = (project, schedule) => {
   confirmStudentCount.value = st.length;
   showUnassignConfirm.value = true;
 };
-
+// Доступные направления для создания расписания (с учётом роли)
+const availableSpecializationsForCreate = computed(() => {
+  if (isSecretary.value && secretarySpecializations.value.length > 0) {
+    return specializations.value.filter((spec) =>
+      secretarySpecializations.value.includes(spec.ID)
+    );
+  }
+  return specializations.value;
+});
 const confirmUnassignProject = async () => {
   if (!confirmProject.value || !confirmSchedule.value) {
     showUnassignConfirm.value = false;
@@ -1650,14 +1649,14 @@ const openCreateScheduleModal = () => {
 const closeCreateModal = () => {
   showCreateModal.value = false;
 };
-
+// Строго обязательное направление
 const isCreateFormValid = computed(
   () =>
     newScheduleForm.value.DateTime &&
     newScheduleForm.value.Class &&
-    newScheduleForm.value.Count > 0
+    newScheduleForm.value.Count > 0 &&
+    newScheduleForm.value.ID_Specialization
 );
-
 const createSchedule = async () => {
   if (isReadOnlyMode.value) {
     addNotification("У вас нет прав для создания расписания", "error");
@@ -2921,6 +2920,22 @@ onUnmounted(() => {
   color: #1e40af;
   border: 1px solid #bfdbfe;
 }
+.required {
+  color: #dc2626;
+  font-weight: 600;
+}
+.required-field {
+  color: #dc2626;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  display: block;
+}
+.form-input:invalid {
+  border-color: #fca5a5;
+}
+.form-input:invalid:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
 .notification-icon {
   width: 1.25rem;
   height: 1.25rem;
@@ -2958,13 +2973,13 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   max-height: 90vh;
-  width: 100%;
-  max-width: 480px;
+  width: 95%;
+  max-width: 600px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 .modal-lg {
-  max-width: 520px;
+  max-width: 700px;
 }
 .modal-header {
   display: flex;
