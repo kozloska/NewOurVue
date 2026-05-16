@@ -2976,12 +2976,12 @@ onUnmounted(() => {
   flex-direction: column;
   max-height: 90vh;
   width: 95%;
-  max-width: 600px;
+  max-width: 700px;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
   overflow: hidden;
 }
 .modal-lg {
-  max-width: 700px;
+  max-width: 800px;
 }
 .modal-header {
   display: flex;
