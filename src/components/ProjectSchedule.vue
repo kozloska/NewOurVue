@@ -1819,7 +1819,7 @@ const downloadScheduleDoc = async (schedule) => {
       projects: projectsList,
     };
 
-    const response = await fetch("/templates/temp.docx");
+    const response = await fetch("/pck/templates/temp.docx");
     if (!response.ok)
       throw new Error("Не удалось загрузить temp.docx из папки public");
 
