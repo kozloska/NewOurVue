@@ -688,39 +688,41 @@
             />
           </div>
 
-          div class="form-group" v-if="specializations.length > 0">
-          <label>
-            Направление подготовки <span class="required">*</span>
-          </label>
-          <select
-            v-model="newScheduleForm.ID_Specialization"
-            class="form-input"
-            required
-          >
-            <option :value="null" disabled>Выберите направление...</option>
-            <option
-              v-for="spec in availableSpecializationsForCreate"
-              :key="spec.ID"
-              :value="spec.ID"
+          <!-- ИСПРАВЛЕНО: добавлен < в начале -->
+          <div class="form-group" v-if="specializations.length > 0">
+            <label>
+              Направление подготовки <span class="required">*</span>
+            </label>
+            <select
+              v-model="newScheduleForm.ID_Specialization"
+              class="form-input"
+              required
             >
-              {{ spec.Name }}
-            </option>
-          </select>
-          <small class="hint required-field"
-            >Поле обязательно для заполнения</small
-          >
+              <option :value="null" disabled>Выберите направление...</option>
+              <option
+                v-for="spec in availableSpecializationsForCreate"
+                :key="spec.ID"
+                :value="spec.ID"
+              >
+                {{ spec.Name }}
+              </option>
+            </select>
+            <small class="hint required-field"
+              >Поле обязательно для заполнения</small
+            >
+          </div>
         </div>
-      </div>
 
-      <div class="modal-footer">
-        <button @click="closeCreateModal" class="modal-cancel">Отмена</button>
-        <button
-          @click="createSchedule"
-          class="modal-confirm"
-          :disabled="!isCreateFormValid || loading"
-        >
-          {{ loading ? "Создание..." : "Создать" }}
-        </button>
+        <div class="modal-footer">
+          <button @click="closeCreateModal" class="modal-cancel">Отмена</button>
+          <button
+            @click="createSchedule"
+            class="modal-confirm"
+            :disabled="!isCreateFormValid || loading"
+          >
+            {{ loading ? "Создание..." : "Создать" }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
