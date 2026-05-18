@@ -5,23 +5,14 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     
-    <!-- 1. НАЗВАНИЕ САЙТА (меняйте текст внутри тега title) -->
     <title>Защиты проектов ЦК</title>
     
-    <!-- 2. ИКОНКА (убедитесь, что файл favicon.ico лежит в папке public) -->
-    <link rel="icon" href="/logo.png">
-    
-    <!-- Если иконка в формате PNG, используйте эту строку вместо верхней: -->
-    <!-- <link rel="icon" type="image/png" href="/favicon.png"> -->
-
-    <script defer="defer" src="/js/chunk-vendors.02f795a0.js"></script>
-    <script defer="defer" src="/js/app.95bb17a6.js"></script>
-    <link href="/css/app.e1281f9b.css" rel="stylesheet">
+    <!-- ✅ Используйте BASE_URL для всех путей -->
+    <link rel="icon" href="<%= BASE_URL %>logo.png">
 </head>
 <body>
-    <noscript>
-        <strong></strong>
-    </noscript>
+    <noscript><strong></strong></noscript>
     <div id="app"></div>
+    <!-- 🔥 Vue CLI САМ добавит сюда скрипты с правильными путями -->
 </body>
 </html>
