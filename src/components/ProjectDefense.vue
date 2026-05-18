@@ -1064,6 +1064,11 @@ export default {
       } catch (error) {
         console.error("Ошибка загрузки данных для оценивания:", error);
       } finally {
+        this.projectsForGrading.sort((a, b) => {
+          const timeA = a.DefenseStartTime || "99:99:99"; // проекты без времени — в конец
+          const timeB = b.DefenseStartTime || "99:99:99";
+          return timeA.localeCompare(timeB);
+        });
         this.loadingAllStudents = false;
       }
     },
