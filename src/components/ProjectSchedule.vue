@@ -2039,19 +2039,23 @@ onUnmounted(() => {
   min-width: 280px;
   max-width: 400px;
 }
-
 .spec-select {
   width: 100%;
   padding: 0.625rem 2.5rem 0.625rem 1rem;
   border: 2px solid var(--color-border);
   border-radius: 0.5rem;
   background: var(--color-bg-card);
-  font-size: 0.95rem;
+
+  font-size: 0.9rem;
+  line-height: 1.5;
   color: var(--color-text-primary);
   cursor: pointer;
   appearance: none;
   transition: all 0.2s;
   font-weight: 500;
+
+  /* Гарантируем, что само поле не растягивается */
+  box-sizing: border-box;
 }
 
 .spec-select:hover {
@@ -2077,8 +2081,9 @@ onUnmounted(() => {
   transform: translateY(-50%);
   pointer-events: none;
   color: var(--color-text-secondary);
+  display: flex;
+  align-items: center;
 }
-
 .spec-clear-btn {
   display: flex;
   align-items: center;
@@ -2202,7 +2207,19 @@ onUnmounted(() => {
   color: var(--color-text-secondary);
   pointer-events: none;
 }
+.spec-select option {
+  font-size: 0.9rem; /* Такой же шрифт, как в поле */
+  padding: 8px 12px; /* Удобные отступы */
+  background: white;
+  color: var(--color-text-primary);
 
+  /* Разрешаем перенос длинных названий на новую строку */
+  white-space: normal !important;
+  word-wrap: break-word;
+
+  /* Ширина списка будет равна ширине поля select */
+  max-width: 100%;
+}
 .search-input {
   width: 100%;
   padding: 0.5rem 2rem 0.5rem 2rem;
