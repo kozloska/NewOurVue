@@ -2906,23 +2906,25 @@ onUnmounted(() => {
 .assigned-project-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start; /* Выравнивание по верху, чтобы крестик не улетал вниз */
+  gap: 12px; /* Отступ между текстом и крестиком */
   margin-bottom: 0.5rem;
-  flex-wrap: wrap;
+  width: 100%;
 }
 
 .assigned-project-title {
   font-weight: 500;
   color: var(--color-text-primary);
   font-size: 0.9rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.4;
+  flex: 1; /* Занимает все свободное место */
+  min-width: 0; /* Разрешает сжатие меньше контента (важно для flex) */
+  word-break: break-word; /* Переносит длинные слова */
+  overflow-wrap: break-word; /* То же самое для совместимости */
 }
 
 .unassign-btn {
-  flex-shrink: 0;
+  flex-shrink: 0; /* 🔥 Запрещает крестику сжиматься */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2932,6 +2934,7 @@ onUnmounted(() => {
   padding: 4px;
   color: var(--color-text-secondary);
   transition: color 0.2s;
+  margin-top: 2px; /* Чуть опустить, чтобы было по центру первой строки */
 }
 
 .unassign-btn:hover:not(:disabled) {
@@ -2947,7 +2950,6 @@ onUnmounted(() => {
   width: 0.875rem;
   height: 0.875rem;
 }
-
 .btn-disabled-graded {
   color: var(--color-border) !important;
   cursor: not-allowed !important;
