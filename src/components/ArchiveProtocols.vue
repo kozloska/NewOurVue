@@ -985,12 +985,34 @@ onMounted(() => {
 });
 </script>
 <style scoped>
+/* ==================== ЦВЕТОВАЯ ПАЛИТРА ==================== */
+.archive-container {
+  /* === Единая палитра с сайдбаром === */
+  --color-primary: #4892b4;
+  --color-primary-hover: #3a7a99;
+  --color-primary-light: rgba(72, 146, 180, 0.1);
+  --color-primary-border: rgba(72, 146, 180, 0.3);
+  --color-primary-text: #2c5f7a;
+
+  --color-bg: #f8fafc;
+  --color-bg-card: #ffffff;
+  --color-border: #e2e8f0;
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #6b7280;
+  --color-error: #ef4444;
+  --color-error-light: #fee2e2;
+  --color-warning: #f59e0b;
+  --color-success: #10b981;
+  --color-success-light: #d1fae5;
+}
+
 /* ==================== ОСНОВНОЙ КОНТЕЙНЕР ==================== */
 .archive-container {
   padding: 2rem;
   max-width: 1600px;
   margin: 0 auto;
   font-family: "Inter", system-ui, -apple-system, sans-serif;
+  background-color: var(--color-bg);
 }
 
 .archive-header {
@@ -1000,7 +1022,7 @@ onMounted(() => {
 .archive-header h1 {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #111827;
+  color: var(--color-text-primary);
   margin-bottom: 1.5rem;
 }
 
@@ -1011,11 +1033,11 @@ onMounted(() => {
   gap: 1rem;
   align-items: center;
   justify-content: space-between;
-  background: white;
+  background: var(--color-bg-card);
   padding: 1rem;
   border-radius: 0.75rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
 }
 
 .search-box {
@@ -1028,16 +1050,18 @@ onMounted(() => {
 .search-input {
   width: 100%;
   padding: 0.625rem 2.5rem 0.625rem 2.5rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border);
   border-radius: 0.5rem;
   font-size: 0.9rem;
   transition: all 0.2s;
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
 .search-icon {
@@ -1047,7 +1071,7 @@ onMounted(() => {
   transform: translateY(-50%);
   width: 1.1rem;
   height: 1.1rem;
-  color: #9ca3af;
+  color: var(--color-text-secondary);
 }
 
 .clear-input-btn {
@@ -1058,17 +1082,18 @@ onMounted(() => {
   background: transparent;
   border: none;
   cursor: pointer;
-  color: #9ca3af;
+  color: var(--color-text-secondary);
   padding: 0.25rem;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.2s;
 }
 
 .clear-input-btn:hover {
   background: #f3f4f6;
-  color: #4b5563;
+  color: var(--color-text-primary);
 }
 
 .filter-group {
@@ -1084,12 +1109,24 @@ onMounted(() => {
 .filter-select {
   appearance: none;
   padding: 0.625rem 2.5rem 0.625rem 1rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border);
   border-radius: 0.5rem;
-  background: white;
+  background: var(--color-bg-card);
   font-size: 0.9rem;
   cursor: pointer;
   min-width: 160px;
+  color: var(--color-text-primary);
+  transition: border-color 0.2s;
+}
+
+.filter-select:hover {
+  border-color: var(--color-primary);
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-light);
 }
 
 .select-arrow {
@@ -1099,7 +1136,7 @@ onMounted(() => {
   transform: translateY(-50%);
   width: 1rem;
   height: 1rem;
-  color: #6b7280;
+  color: var(--color-text-secondary);
   pointer-events: none;
 }
 
@@ -1109,9 +1146,9 @@ onMounted(() => {
   gap: 0.5rem;
   padding: 0.625rem 1rem;
   background: #f3f4f6;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border);
   border-radius: 0.5rem;
-  color: #374151;
+  color: var(--color-text-primary);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -1119,9 +1156,10 @@ onMounted(() => {
 
 .reset-btn:hover {
   background: #e5e7eb;
-  border-color: #9ca3af;
+  border-color: var(--color-text-secondary);
 }
 
+/* === АКТИВНЫЕ ФИЛЬТРЫ - СИНИЕ === */
 .active-filters-bar {
   display: flex;
   flex-wrap: wrap;
@@ -1132,7 +1170,7 @@ onMounted(() => {
 
 .filter-label {
   font-size: 0.85rem;
-  color: #6b7280;
+  color: var(--color-text-secondary);
   margin-right: 0.5rem;
 }
 
@@ -1141,39 +1179,47 @@ onMounted(() => {
   align-items: center;
   gap: 0.4rem;
   padding: 0.25rem 0.5rem 0.25rem 0.4rem;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-primary-border);
   border-radius: 9999px;
   font-size: 0.8rem;
-  color: #1e40af;
+  color: var(--color-primary-text);
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.filter-badge:hover {
+  background: rgba(72, 146, 180, 0.15);
 }
 
 .badge-icon {
   width: 0.9rem;
   height: 0.9rem;
+  color: var(--color-primary);
 }
 
 .badge-close {
   background: transparent;
   border: none;
-  color: #60a5fa;
+  color: var(--color-primary);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0.1rem;
   border-radius: 50%;
+  transition: all 0.2s;
 }
 
 .badge-close:hover {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--color-primary);
+  color: white;
 }
 
-/* ==================== МАССОВЫЕ ДЕЙСТВИЯ ==================== */
+/* ==================== МАССОВЫЕ ДЕЙСТВИЯ - СИНИЙ СТИЛЬ ==================== */
 .bulk-actions-panel {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-primary-border);
   border-radius: 0.5rem;
   padding: 1rem;
   margin-bottom: 1.5rem;
@@ -1187,8 +1233,14 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #166534;
+  color: var(--color-primary-text);
   font-weight: 500;
+}
+
+.selected-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--color-primary);
 }
 
 .bulk-buttons {
@@ -1196,6 +1248,7 @@ onMounted(() => {
   gap: 0.75rem;
 }
 
+/* === КНОПКИ === */
 .btn-primary,
 .btn-secondary,
 .btn-action {
@@ -1212,58 +1265,78 @@ onMounted(() => {
   border: 1px solid transparent;
 }
 
+/* 🔵 Кнопка "Сгенерировать" - синяя */
 .btn-primary {
-  background: #059669;
+  background: var(--color-primary);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #047857;
+  background: var(--color-primary-hover);
 }
 
 .btn-primary:disabled {
-  background: #6ee7b7;
+  background: #9ca3af;
   cursor: not-allowed;
 }
 
+/* Кнопка "Снять выделение" */
 .btn-secondary {
   background: white;
-  border-color: #d1d5db;
-  color: #374151;
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
 }
 
 .btn-secondary:hover {
   background: #f9fafb;
-  border-color: #9ca3af;
+  border-color: var(--color-text-secondary);
 }
 
+/* 🔵 Кнопка скачивания протокола - синяя */
 .btn-action {
   padding: 0.4rem;
-  background: #eff6ff;
-  color: #2563eb;
-  border-color: #bfdbfe;
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
 }
 
 .btn-action:hover:not(:disabled) {
-  background: #dbeafe;
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
 }
 
 .btn-action:disabled {
+  background: #9ca3af;
+  border-color: #9ca3af;
   opacity: 0.6;
   cursor: wait;
 }
 
+.action-icon {
+  width: 1rem;
+  height: 1rem;
+  color: currentColor;
+}
+
+/* === ПРОГРЕСС-БАР - СИНИЙ === */
 .progress-container {
   margin-bottom: 1.5rem;
   background: white;
   padding: 1rem;
   border-radius: 0.5rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
 }
 
 .progress-bar {
   height: 0.5rem;
-  background: #e5e7eb;
+  background: var(--color-border);
   border-radius: 999px;
   overflow: hidden;
   margin-bottom: 0.5rem;
@@ -1271,21 +1344,22 @@ onMounted(() => {
 
 .progress-fill {
   height: 100%;
-  background: #059669;
+  background: var(--color-primary);
   transition: width 0.3s ease;
 }
 
 .progress-text {
   font-size: 0.875rem;
-  color: #4b5563;
+  color: var(--color-text-secondary);
 }
 
+/* ==================== ПУСТОЕ СОСТОЯНИЕ ==================== */
 .empty-state {
   text-align: center;
   padding: 4rem 1rem;
   background: white;
   border-radius: 0.75rem;
-  border: 1px dashed #d1d5db;
+  border: 1px dashed var(--color-border);
 }
 
 .empty-icon-wrapper {
@@ -1299,27 +1373,28 @@ onMounted(() => {
 .empty-icon {
   width: 2rem;
   height: 2rem;
-  color: #9ca3af;
+  color: var(--color-text-secondary);
 }
 
 .empty-state h3 {
   font-size: 1.1rem;
-  color: #374151;
+  color: var(--color-text-primary);
   margin-bottom: 0.5rem;
 }
 
 .empty-state p {
-  color: #6b7280;
+  color: var(--color-text-secondary);
   margin-bottom: 1.5rem;
 }
 
 .empty-action-btn {
   padding: 0.5rem 1rem;
   background: white;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--color-border);
   border-radius: 0.375rem;
-  color: #374151;
+  color: var(--color-text-primary);
   cursor: pointer;
+  transition: background 0.2s;
 }
 
 .empty-action-btn:hover {
@@ -1331,13 +1406,13 @@ onMounted(() => {
   background: white;
   border-radius: 0.75rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   overflow: hidden;
 }
 
 .table-controls {
   padding: 1rem;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1350,13 +1425,13 @@ onMounted(() => {
   gap: 0.5rem;
   cursor: pointer;
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--color-text-primary);
   user-select: none;
 }
 
 .table-info {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--color-text-secondary);
 }
 
 .table-wrapper {
@@ -1367,14 +1442,13 @@ onMounted(() => {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
-  /* table-layout: fixed; Убрал фиксацию, чтобы остальные колонки тянулись */
 }
 
 .protocols-table th,
 .protocols-table td {
   padding: 0.75rem 1rem;
   text-align: center;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
   word-wrap: break-word;
 }
@@ -1382,7 +1456,7 @@ onMounted(() => {
 .protocols-table th {
   background: #f9fafb;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-text-primary);
   white-space: nowrap;
 }
 
@@ -1395,48 +1469,43 @@ onMounted(() => {
   line-height: 1.4;
 }
 
-/* === ИЗМЕНЕННЫЕ ШИРИНЫ КОЛОНОК === */
-
-/* Выбор (Чекбокс) - уменьшили */
+/* === ШИРИНЫ КОЛОНОК === */
 .checkbox-column {
   width: 40px !important;
   text-align: center !important;
 }
 
-/* Оценка - уменьшили */
 .protocols-table th:nth-child(7),
 .protocols-table td:nth-child(7) {
   width: 80px !important;
 }
 
-/* Год - уменьшили */
 .protocols-table th:nth-child(8),
 .protocols-table td:nth-child(8) {
   width: 70px !important;
 }
 
-/* Дата защиты - уменьшили */
 .protocols-table th:nth-child(9),
 .protocols-table td:nth-child(9) {
   width: 110px !important;
 }
 
-/* Действия - уменьшили */
 .actions-column {
   width: 60px !important;
   text-align: center !important;
 }
 
-/* Остальные стили таблицы без изменений */
+/* === ЧЕКБОКСЫ - СИНИЕ === */
 input[type="checkbox"] {
   cursor: pointer;
-  accent-color: #059669;
+  accent-color: var(--color-primary);
   width: 1rem;
   height: 1rem;
 }
 
+/* 🔵 Выделенная строка - светло-синяя */
 .selected-row {
-  background-color: #f0fdf4;
+  background-color: var(--color-primary-light);
 }
 
 .student-name {
@@ -1448,6 +1517,7 @@ input[type="checkbox"] {
   max-width: 300px;
 }
 
+/* === БАДЖИ ОЦЕНОК (оставляем цветовую семантику) === */
 .grade-badge {
   display: inline-block;
   padding: 0.25rem 0.6rem;
@@ -1478,16 +1548,22 @@ input[type="checkbox"] {
 
 .grade-unknown {
   background: #f3f4f6;
-  color: #6b7280;
+  color: var(--color-text-secondary);
 }
 
+/* === ПАГИНАЦИЯ === */
 .pagination-container {
   padding: 1rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--color-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
   background: white;
+}
+
+.pagination-info {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
 }
 
 .pagination-controls {
@@ -1497,19 +1573,20 @@ input[type="checkbox"] {
 
 .pagination-btn {
   padding: 0.5rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--color-border);
   background: white;
   border-radius: 0.375rem;
   cursor: pointer;
-  color: #374151;
+  color: var(--color-text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.2s;
 }
 
 .pagination-btn:hover:not(:disabled) {
   background: #f3f4f6;
-  border-color: #d1d5db;
+  border-color: var(--color-text-secondary);
 }
 
 .pagination-btn:disabled {
@@ -1517,6 +1594,12 @@ input[type="checkbox"] {
   cursor: not-allowed;
 }
 
+.pagination-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ==================== УВЕДОМЛЕНИЯ ==================== */
 .notifications {
   position: fixed;
   bottom: 2rem;
@@ -1542,15 +1625,15 @@ input[type="checkbox"] {
 }
 
 .notification-success {
-  border-left-color: #10b981;
+  border-left-color: var(--color-success);
 }
 
 .notification-error {
-  border-left-color: #ef4444;
+  border-left-color: var(--color-error);
 }
 
 .notification-info {
-  border-left-color: #3b82f6;
+  border-left-color: var(--color-primary);
 }
 
 .notification-icon {
@@ -1558,15 +1641,15 @@ input[type="checkbox"] {
 }
 
 .notification-success .notification-icon {
-  color: #10b981;
+  color: var(--color-success);
 }
 
 .notification-error .notification-icon {
-  color: #ef4444;
+  color: var(--color-error);
 }
 
 .notification-info .notification-icon {
-  color: #3b82f6;
+  color: var(--color-primary);
 }
 
 .notification-close {
@@ -1574,13 +1657,15 @@ input[type="checkbox"] {
   background: none;
   border: none;
   cursor: pointer;
-  color: #9ca3af;
+  color: var(--color-text-secondary);
+  transition: color 0.2s;
 }
 
 .notification-close:hover {
-  color: #4b5563;
+  color: var(--color-text-primary);
 }
 
+/* ==================== ИКОНКИ И УТИЛИТЫ ==================== */
 .btn-icon {
   width: 1rem;
   height: 1rem;
@@ -1631,28 +1716,35 @@ input[type="checkbox"] {
   }
 }
 
+/* ==================== АДАПТИВ ==================== */
 @media (max-width: 768px) {
   .archive-container {
     padding: 1rem;
   }
+
   .controls-wrapper {
     flex-direction: column;
     align-items: stretch;
   }
+
   .search-box {
     max-width: none;
   }
+
   .filter-group {
     flex-wrap: wrap;
   }
+
   .select-wrapper {
     flex: 1;
   }
+
   .bulk-actions-panel {
     flex-direction: column;
     gap: 1rem;
     align-items: stretch;
   }
+
   .bulk-buttons {
     justify-content: space-between;
   }
