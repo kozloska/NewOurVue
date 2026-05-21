@@ -427,17 +427,25 @@ h2 {
   font-size: 0.9rem;
 }
 
+/* === Кнопка "Начать загрузку" === */
 .upload-btn {
-  background: #10b981;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s; /* ✅ Упрощён переход */
+  font-size: 0.9rem;
+  background-color: #4892b4; /* ✅ Было: #10b981 (зелёный) */
   color: white;
 }
 
 .upload-btn:hover:not(:disabled) {
-  background: #059669;
+  background-color: #3a7a9a; /* ✅ Темнее при наведении */
 }
 
 .upload-btn:disabled {
-  background: #94a3b8;
+  background-color: #94a3b8;
   cursor: not-allowed;
 }
 
@@ -467,7 +475,7 @@ h2 {
 
 .progress {
   height: 100%;
-  background: linear-gradient(90deg, #10b981, #059669);
+  background-color: #4892b4; /* ✅ Было: linear-gradient(#10b981, #059669) */
   border-radius: 6px;
   transition: width 0.3s ease;
 }

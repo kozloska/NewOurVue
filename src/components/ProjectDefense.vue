@@ -181,16 +181,13 @@
                         :value="
                           formatTimeForInput(selectedProject.DefenseStartTime)
                         "
-                        @change="
-                          updateProjectTime(
-                            selectedProject,
-                            'start',
-                            $event.target.value
-                          )
+                        @input="
+                          handleTimeInput($event, selectedProject, 'start')
                         "
                         class="time-input"
                       />
                     </div>
+
                     <div class="time-input-group">
                       <label for="end-time">Время окончания:</label>
                       <input
@@ -199,13 +196,7 @@
                         :value="
                           formatTimeForInput(selectedProject.DefenseEndTime)
                         "
-                        @change="
-                          updateProjectTime(
-                            selectedProject,
-                            'end',
-                            $event.target.value
-                          )
-                        "
+                        @input="handleTimeInput($event, selectedProject, 'end')"
                         class="time-input"
                       />
                     </div>
@@ -1117,6 +1108,75 @@ export default {
         this.loadingCommission = false;
       }
     },
+    handleTimeInput(event, project, timeType) {
+      const value = event.target.value;
+
+      // Если поле очистили - сразу отправляем null (или оставляем как есть, по желанию)
+      if (!value) {
+        this.updateProjectTime(project, timeType, null);
+        return;
+      }
+
+      // Проверяем, что время введено полностью (формат HH:MM)
+      // input type="time" обычно возвращает строку вида "10:30"
+      if (/^\d{2}:\d{2}$/.test(value)) {
+        // Добавляем секунды для бэкенда
+        this.updateProjectTime(project, timeType, value + ":00");
+      }
+      // Если время неполное (например, пользователь только ввел "1"),
+      // мы ничего не делаем, ждем дальнейшего ввода.
+    },
+
+    async updateProjectTime(project, timeType, newTime) {
+      // Если newTime null, значит поле очистили
+      if (newTime === null) {
+        // Логика очистки, если нужна. Иначе можно просто вернуть.
+        return;
+      }
+
+      try {
+        const endpoint =
+          timeType === "start"
+            ? "/api/projects/project_time_start/"
+            : "/api/projects/project_time_end/";
+
+        const payload = {
+          ID_Project: project.ID,
+          ID_DefenseSchedule: this.activeFilters?.scheduleId,
+        };
+
+        // newTime уже приходит в формате HH:MM:SS из handleTimeInput
+        if (timeType === "start") {
+          payload.DefenseStartTime = newTime;
+        } else {
+          payload.DefenseEndTime = newTime;
+        }
+
+        const response = await api.patch(endpoint, payload);
+
+        if (response.status === 200) {
+          // Обновляем локальное состояние, чтобы UI реагировал мгновенно
+          if (timeType === "start") {
+            project.DefenseStartTime = newTime;
+          } else {
+            project.DefenseEndTime = newTime;
+          }
+
+          // Опционально: можно показать уведомление, но лучше тихо,
+          // так как пользователь продолжает работать
+          // alert("Время успешно обновлено");
+
+          // Обновляем общие данные, если нужно синхронизировать с другими полями
+          await this.refreshProjectsData();
+        }
+      } catch (error) {
+        console.error("Ошибка обновления времени:", error);
+        alert(
+          "Ошибка при обновлении времени: " +
+            (error.response?.data?.message || error.message)
+        );
+      }
+    },
 
     goToProjectFilter() {
       this.showProjects = false;
@@ -1352,46 +1412,6 @@ export default {
       }
       return "Не указано";
     },
-
-    async updateProjectTime(project, timeType, newTime) {
-      if (!newTime) return;
-      try {
-        const endpoint =
-          timeType === "start"
-            ? "/api/projects/project_time_start/"
-            : "/api/projects/project_time_end/";
-
-        const payload = {
-          ID_Project: project.ID,
-          ID_DefenseSchedule: this.activeFilters?.scheduleId,
-        };
-
-        if (timeType === "start") {
-          payload.DefenseStartTime = newTime + ":00";
-        } else {
-          payload.DefenseEndTime = newTime + ":00";
-        }
-
-        const response = await api.patch(endpoint, payload);
-
-        if (response.status === 200) {
-          if (timeType === "start") {
-            project.DefenseStartTime = newTime + ":00";
-          } else {
-            project.DefenseEndTime = newTime + ":00";
-          }
-          alert("Время успешно обновлено");
-          await this.refreshProjectsData();
-        }
-      } catch (error) {
-        console.error("Ошибка обновления времени:", error);
-        alert(
-          "Ошибка при обновлении времени: " +
-            (error.response?.data?.message || error.message)
-        );
-      }
-    },
-
     formatTimeForInput(timeStr) {
       if (!timeStr) return "";
       if (typeof timeStr === "string" && timeStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
@@ -1914,7 +1934,7 @@ h5 {
   align-items: flex-start;
   padding: 1rem 1.25rem;
   background-color: #f8fafc;
-  border-left: 4px solid #3b82f6;
+  border-left: 4px solid #4892b4; /* ✅ Обновлено */
 }
 
 .project-title-card .status-badge {
@@ -2032,6 +2052,15 @@ h5 {
   background-color: #dc2626;
 }
 
+/* ✅ ОБНОВЛЕНО: Кнопка "Загрузить аудио" */
+.local-upload-button {
+  background-color: #4892b4;
+}
+
+.local-upload-button:hover {
+  background-color: #3a7a9a;
+}
+
 .recording-indicator {
   width: 0.75rem;
   height: 0.75rem;
@@ -2076,12 +2105,12 @@ h5 {
 }
 
 .upload-button {
-  background-color: #3b82f6;
+  background-color: #4892b4; /* ✅ Обновлено */
   color: white;
 }
 
 .upload-button:hover {
-  background-color: #2563eb;
+  background-color: #3a7a9a; /* ✅ Обновлено */
 }
 
 .cancel-button {
@@ -2166,13 +2195,14 @@ h5 {
   color: #1e293b;
 }
 
+/* ✅ ОБНОВЛЕНО: Кнопка "Добавить вопрос" */
 .add-button {
-  background-color: #4ade80;
+  background-color: #4892b4;
   color: white;
 }
 
 .add-button:hover {
-  background-color: #22c55e;
+  background-color: #3a7a9a;
 }
 
 .no-questions {
@@ -2323,7 +2353,7 @@ h5 {
   width: 2.5rem;
   height: 2.5rem;
   border: 3px solid #e2e8f0;
-  border-top-color: #3b82f6;
+  border-top-color: #4892b4; /* ✅ Обновлено */
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
@@ -2333,7 +2363,7 @@ h5 {
   width: 1rem;
   height: 1rem;
   border: 2px solid #e2e8f0;
-  border-top-color: #3b82f6;
+  border-top-color: #4892b4; /* ✅ Обновлено */
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -2498,12 +2528,13 @@ h5 {
   padding: 1rem;
 }
 
+/* ✅ ОБНОВЛЕНО: Кнопка "Начать защиту" */
 .start-defense-button-modal {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background-color: #10b981;
+  background-color: #4892b4;
   color: white;
   border: none;
   border-radius: 0.5rem;
@@ -2514,7 +2545,7 @@ h5 {
 }
 
 .start-defense-button-modal:hover:not(:disabled) {
-  background-color: #059669;
+  background-color: #3a7a9a;
 }
 
 .start-defense-button-modal:disabled {
@@ -2619,8 +2650,8 @@ h5 {
 
 .time-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #4892b4; /* ✅ Обновлено */
+  box-shadow: 0 0 0 3px rgba(72, 146, 180, 0.15); /* ✅ Обновлено */
 }
 
 .ok-button {
@@ -2637,14 +2668,6 @@ h5 {
   gap: 1rem;
   justify-content: center;
   margin-bottom: 1rem;
-}
-
-.local-upload-button {
-  background-color: #6366f1;
-}
-
-.local-upload-button:hover {
-  background-color: #4f46e5;
 }
 
 .projects-grading-list {
@@ -2828,20 +2851,18 @@ h5 {
 }
 
 .save-all-button {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background-color: #4892b4; /* ✅ Было: линейный градиент синего */
   color: white;
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
   margin-right: 1rem;
+  transition: background-color 0.2s; /* ✅ Простой переход */
 }
 
 .save-all-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-  transform: translateY(-2px);
+  background-color: #3a7a9a; /* ✅ Темнее при наведении */
 }
 
 .save-all-button:disabled {
-  background: #94a3b8;
+  background-color: #94a3b8;
   cursor: not-allowed;
   opacity: 0.7;
 }

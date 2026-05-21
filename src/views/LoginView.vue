@@ -153,8 +153,8 @@ export default {
 
 .input-group input:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #4892b4; /* ✅ Было: #667eea */
+  box-shadow: 0 0 0 3px rgba(72, 146, 180, 0.15); /* ✅ Было: rgba(102, 126, 234, 0.1) */
 }
 
 .input-group input:disabled {
@@ -166,14 +166,15 @@ export default {
 .login-button {
   width: 100%;
   padding: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  /* ✅ Обновленный фон: ваш фирменный голубой */
+  background: linear-gradient(135deg, #4892b4 0%, #3a7a9a 100%);
   color: white;
   border: none;
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -181,12 +182,19 @@ export default {
 
 .login-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+  /* ✅ Тень в тон кнопки */
+  box-shadow: 0 5px 15px rgba(72, 146, 180, 0.4);
+}
+
+.login-button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .login-button:disabled {
   opacity: 0.7;
   cursor: wait;
+  /* ✅ Фон для disabled-состояния */
+  background: #94a3b8;
 }
 
 /* --- Сообщения об ошибках --- */

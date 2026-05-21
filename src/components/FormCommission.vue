@@ -588,13 +588,30 @@ label {
   transition: background-color 0.2s;
 }
 
+/* === Кнопка "+" (добавить члена комиссии) — увеличенная === */
 .add-button {
-  background-color: #4ade80;
+  background-color: #4892b4;
   color: white;
+  padding: 0.4rem 0.8rem; /* ✅ Было: 0.25rem 0.5rem — увеличено */
+  font-size: 1rem; /* ✅ Было: 0.875rem — крупнее знак "+" */
+  font-weight: 400; /* ✅ Жирнее для лучшей видимости */
+  margin-left: auto;
+  min-width: 44px; /* ✅ Фиксированная минимальная ширина */
+  height: 44px; /* ✅ Фиксированная высота для удобства */
+  border-radius: 0.5rem; /* ✅ Чуть более скруглённые углы */
+  transition: background-color 0.2s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .add-button:hover {
-  background-color: #22c55e;
+  background-color: #3a7a9a;
+  transform: scale(1.05); /* ✅ Лёгкое увеличение при наведении */
+}
+
+.add-button:active {
+  transform: scale(0.98); /* ✅ Эффект нажатия */
 }
 
 .form-actions {
@@ -604,15 +621,16 @@ label {
 }
 
 .submit-button {
-  background-color: #3b82f6;
+  background-color: #4892b4; /* ✅ Было: #3b82f6 */
   color: white;
   font-size: 1.1rem;
   padding: 0.75rem 1.75rem;
   width: 100%;
+  transition: background-color 0.2s; /* ✅ Упрощён переход */
 }
 
 .submit-button:hover:not(:disabled) {
-  background-color: #2563eb;
+  background-color: #3a7a9a; /* ✅ Темнее при наведении */
 }
 
 .submit-button:disabled {
@@ -671,6 +689,13 @@ label {
 
   .card-content {
     padding: 1rem;
+  }
+
+  .add-button {
+    padding: 0.4rem 0.8rem;
+    font-size: 1.1rem;
+    min-width: 40px;
+    height: 40px;
   }
 }
 </style>

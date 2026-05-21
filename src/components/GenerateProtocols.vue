@@ -1716,7 +1716,7 @@ h3 {
 .retry-button {
   margin-top: 1rem;
   padding: 0.5rem 1rem;
-  background-color: #3b82f6;
+  background-color: #4892b4; /* ✅ Уже была близка, но приводим к точному тону */
   color: white;
   border: none;
   border-radius: 0.375rem;
@@ -1724,8 +1724,9 @@ h3 {
   transition: background-color 0.2s;
   font-weight: 500;
 }
+
 .retry-button:hover {
-  background-color: #2563eb;
+  background-color: #3a7a9a;
 }
 .projects-title {
   color: #1e293b;
@@ -1929,7 +1930,6 @@ h5 {
 }
 .edit-btn,
 .delete-btn,
-.save-btn,
 .cancel-btn {
   padding: 0.25rem;
   border: none;
@@ -1938,6 +1938,22 @@ h5 {
   font-size: 0.8rem;
   background: none;
 }
+
+.save-btn {
+  padding: 0.25rem 0.5rem;
+  background-color: #4892b4; /* ✅ Было: #10b981 */
+  color: white;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background-color 0.2s;
+}
+
+.save-btn:hover {
+  background-color: #3a7a9a;
+}
+
 .edit-btn:hover {
   background-color: #dbeafe;
 }
@@ -1981,19 +1997,27 @@ h5 {
   border-radius: 0.25rem;
   font-size: 0.85rem;
 }
+/* === Кнопка "Добавить вопрос" (+) === */
 .add-question-btn {
-  padding: 0.5rem;
-  background-color: #10b981;
+  padding: 0.5rem 0.75rem;
+  background-color: #4892b4; /* ✅ Было: #10b981 */
   color: white;
   border: none;
   border-radius: 0.25rem;
   cursor: pointer;
   font-size: 0.8rem;
+  transition: background-color 0.2s;
 }
+
+.add-question-btn:hover:not(:disabled) {
+  background-color: #3a7a9a;
+}
+
 .add-question-btn:disabled {
   background-color: #94a3b8;
   cursor: not-allowed;
 }
+
 .messages-container {
   margin-top: 2rem;
   display: flex;
@@ -2036,48 +2060,64 @@ h5 {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background-color: #6366f1;
+  background-color: #4892b4; /* ✅ Было: #6366f1 */
   color: white;
   border: none;
   border-radius: 0.375rem;
   cursor: pointer;
   font-weight: 500;
   font-size: 0.95rem;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
 }
+
 .generate-all-docx-button:hover:not(:disabled) {
-  background-color: #4f46e5;
+  background-color: #3a7a9a; /* ✅ Темнее при наведении */
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(72, 146, 180, 0.3);
 }
+
+.generate-all-docx-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
 .generate-all-docx-button:disabled {
   background-color: #94a3b8;
   cursor: not-allowed;
 }
+
 .approve-project-button {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background-color: #4892b4; /* ✅ Было: green gradient */
   color: white;
   border: none;
   border-radius: 0.375rem;
   cursor: pointer;
   font-weight: 600;
   font-size: 0.95rem;
-  transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+  transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 2px 4px rgba(72, 146, 180, 0.2);
 }
+
 .approve-project-button:hover:not(:disabled) {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
-  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+  background-color: #3a7a9a;
+  box-shadow: 0 4px 8px rgba(72, 146, 180, 0.3);
   transform: translateY(-1px);
 }
+
+.approve-project-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
 .approve-project-button:disabled {
-  background: #94a3b8;
+  background-color: #94a3b8;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
+
 .button-icon {
   font-size: 1rem;
 }
@@ -2094,16 +2134,19 @@ h5 {
   font-size: 0.875rem;
 }
 .docx-button {
-  background-color: #3b82f6;
+  background-color: #4892b4; /* ✅ Было: #3b82f6 */
   color: white;
 }
+
 .docx-button:hover:not(:disabled) {
-  background-color: #2563eb;
+  background-color: #3a7a9a;
 }
+
 .docx-button:disabled {
   background-color: #94a3b8;
   cursor: not-allowed;
 }
+
 .student-actions {
   display: flex;
   gap: 0.5rem;
@@ -2214,23 +2257,28 @@ h5 {
     justify-content: flex-end;
   }
 }
+/* === Кнопка "Распределить вопросы" === */
 .distribute-questions-button {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  background-color: #8b5cf6;
+  background-color: #4892b4; /* ✅ Было: #8b5cf6 */
   color: white;
   border: none;
   border-radius: 0.375rem;
   cursor: pointer;
   font-weight: 500;
   font-size: 0.95rem;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
 }
+
 .distribute-questions-button:hover:not(:disabled) {
-  background-color: #7c3aed;
+  background-color: #3a7a9a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(72, 146, 180, 0.3);
 }
+
 .distribute-questions-button:disabled {
   background-color: #94a3b8;
   cursor: not-allowed;

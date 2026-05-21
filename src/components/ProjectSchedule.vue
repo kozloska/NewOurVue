@@ -1887,7 +1887,6 @@ onUnmounted(() => {
   if (searchTimeout.value) clearTimeout(searchTimeout.value);
 });
 </script>
-
 <style scoped>
 /* === БАЗОВЫЕ СТИЛИ === */
 .schedule-container {
@@ -1935,22 +1934,24 @@ onUnmounted(() => {
   gap: 0.5rem;
   font-size: 1rem;
   font-weight: 600;
-  color: #3b82f6;
+  color: #4892b4;
   background: #eff6ff;
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
+  border: 1px solid #bae6fd;
 }
 .year-icon {
   width: 1.25rem;
   height: 1.25rem;
+  color: #4892b4;
 }
 .projects-stat {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: #6b7280;
+  color: #4892b4;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   background: #f8fafc;
   padding: 0.375rem 0.75rem;
   border-radius: 0.375rem;
@@ -1962,16 +1963,19 @@ onUnmounted(() => {
   align-items: flex-end;
   gap: 0.75rem;
 }
+
+/* === БЕЙДЖ СПЕЦИАЛЬНОСТИ — СИНИЙ === */
 .spec-badge {
-  background: #dbeafe;
-  color: #1e40af;
+  background: #eff6ff;
+  color: #4892b4;
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;
-  font-weight: 500;
+  font-weight: 600;
   font-size: 0.875rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  border: 1px solid #bae6fd;
 }
 .specialization-filter {
   display: flex;
@@ -2016,8 +2020,8 @@ onUnmounted(() => {
 }
 .spec-select:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  border-color: #4892b4;
+  box-shadow: 0 0 0 3px rgba(72, 146, 180, 0.15);
 }
 .spec-select:disabled {
   background: #f3f4f6;
@@ -2057,8 +2061,6 @@ onUnmounted(() => {
   grid-template-columns: 1fr 2fr;
   gap: 2rem;
 }
-
-/* 🔥 Новое правило: растягиваем на всю ширину, если левая панель скрыта */
 .schedule-content.full-width-mode {
   grid-template-columns: 1fr;
 }
@@ -2093,14 +2095,17 @@ onUnmounted(() => {
   width: 1.25rem;
   height: 1.25rem;
 }
+
+/* Счётчик в пуле — синий */
 .pool-count {
-  background: #3b82f6;
+  background: #4892b4;
   color: white;
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
 }
+
 .pool-filters {
   padding: 1rem 1.5rem;
   border-bottom: 1px solid #e5e7eb;
@@ -2114,13 +2119,15 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: #374151;
+  color: #334155;
+  font-weight: 500;
   cursor: pointer;
 }
 .filter-checkbox input {
   width: 1rem;
   height: 1rem;
   cursor: pointer;
+  accent-color: #4892b4;
 }
 .filter-checkbox input:disabled {
   cursor: not-allowed;
@@ -2137,21 +2144,25 @@ onUnmounted(() => {
   left: 0.75rem;
   width: 1rem;
   height: 1rem;
-  color: #9ca3af;
+  color: #4892b4;
   pointer-events: none;
 }
 .search-input {
   width: 100%;
   padding: 0.5rem 2rem 0.5rem 2rem;
-  border: 1px solid #d1d5db;
+  border: 2px solid #cbd5e1;
   border-radius: 0.375rem;
   font-size: 0.875rem;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  color: #1f2937;
+}
+.search-input:hover {
+  border-color: #94a3b8;
 }
 .search-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #4892b4;
+  box-shadow: 0 0 0 3px rgba(72, 146, 180, 0.15);
 }
 .search-input:disabled {
   background: #f3f4f6;
@@ -2166,9 +2177,10 @@ onUnmounted(() => {
   cursor: pointer;
   padding: 0.25rem;
   border-radius: 0.25rem;
+  transition: color 0.2s;
 }
 .search-clear:hover:not(:disabled) {
-  color: #6b7280;
+  color: #4892b4;
   background: #f3f4f6;
 }
 .search-clear:disabled {
@@ -2194,15 +2206,17 @@ onUnmounted(() => {
 }
 .project-card:hover {
   background: #f1f5f9;
-  border-color: #cbd5e1;
+  border-color: #94a3b8;
 }
+
+/* Выбранный проект — синяя рамка */
 .project-card.selected {
   background: #eff6ff;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #4892b4;
+  box-shadow: 0 0 0 3px rgba(72, 146, 180, 0.15);
 }
 .project-card.partial-project {
-  border-left: 4px solid #f59e0b;
+  border-left: 4px solid #4892b4;
 }
 .project-card.card-readonly {
   cursor: default !important;
@@ -2221,22 +2235,27 @@ onUnmounted(() => {
   margin-bottom: 0.5rem;
   flex-wrap: wrap;
 }
+
+/* Специальность в карточке — СИНИЙ */
 .project-specialization {
   display: flex;
   align-items: center;
   gap: 0.25rem;
   font-size: 0.7rem;
-  color: #7c3aed;
-  background: #f5f3ff;
+  color: #4892b4;
+  background: #eff6ff;
   padding: 0.125rem 0.5rem;
   border-radius: 9999px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1;
+  border: 1px solid #bae6fd;
 }
 .project-specialization .spec-mini-icon {
   width: 0.75rem;
   height: 0.75rem;
+  color: #4892b4;
 }
+
 .project-checkbox {
   display: flex;
   align-items: center;
@@ -2275,38 +2294,45 @@ onUnmounted(() => {
   height: 0.875rem;
   flex-shrink: 0;
   margin-top: 0.125rem;
+  color: #64748b;
 }
 .students-list {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
 }
+
+/* === ТЕГИ СТУДЕНТОВ — ЕДИНЫЙ СИНИЙ === */
 .student-tag {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  background: #dbeafe;
-  color: #1e40af;
+  background: #eff6ff;
+  color: #4892b4;
   padding: 0.125rem 0.5rem;
   border-radius: 9999px;
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
+  border: 1px solid #bae6fd;
 }
 .student-tag:hover {
-  background: #bfdbfe;
+  background: #e0f2fe;
+  border-color: #7dd3fc;
 }
 .student-tag.selected {
-  background: #3b82f6;
+  background: #4892b4;
   color: white;
+  border-color: #3a7a9a;
+  box-shadow: 0 2px 4px rgba(72, 146, 180, 0.2);
 }
 .student-tag.tag-readonly {
   cursor: default !important;
   opacity: 0.9;
 }
 .student-tag.tag-readonly:hover {
-  background: #dbeafe !important;
+  background: #eff6ff !important;
   transform: none !important;
 }
 .student-group {
@@ -2331,9 +2357,10 @@ onUnmounted(() => {
   overflow: hidden;
   margin-bottom: 0.25rem;
 }
+/* ПРОГРЕСС — СИНИЙ (вместо зелёного) */
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #10b981, #3b82f6);
+  background: linear-gradient(90deg, #4892b4, #3a7a9a);
   border-radius: 3px;
   transition: width 0.3s ease;
 }
@@ -2433,26 +2460,27 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   padding: 3rem 1rem;
-  color: #6b7280;
+  color: #4892b4;
   text-align: center;
 }
 .empty-icon {
   width: 3rem;
   height: 3rem;
-  color: #10b981;
+  color: #4892b4;
   margin-bottom: 1rem;
 }
 .clear-search-btn {
   margin-top: 1rem;
   padding: 0.5rem 1rem;
-  background: #3b82f6;
+  background: #4892b4;
   color: white;
   border: none;
   border-radius: 0.375rem;
   cursor: pointer;
+  transition: background-color 0.2s;
 }
 .clear-search-btn:hover {
-  background: #2563eb;
+  background: #3a7a9a;
 }
 
 /* === РАСПИСАНИЕ === */
@@ -2492,19 +2520,25 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: #4892b4;
+  font-weight: 500;
 }
 .date-input {
   padding: 0.375rem 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 2px solid #cbd5e1;
   border-radius: 0.375rem;
   font-size: 0.9rem;
   cursor: pointer;
+  color: #1f2937;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.date-input:hover {
+  border-color: #94a3b8;
 }
 .date-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #4892b4;
+  box-shadow: 0 0 0 3px rgba(72, 146, 180, 0.15);
 }
 .date-input:disabled {
   background: #f3f4f6;
@@ -2517,9 +2551,10 @@ onUnmounted(() => {
   cursor: pointer;
   padding: 0.25rem;
   border-radius: 0.25rem;
+  transition: color 0.2s;
 }
 .date-clear:hover:not(:disabled) {
-  color: #6b7280;
+  color: #4892b4;
   background: #f3f4f6;
 }
 .date-clear:disabled {
@@ -2532,7 +2567,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: #10b981;
+  background-color: #4892b4;
   color: white;
   border: none;
   border-radius: 0.375rem;
@@ -2542,30 +2577,38 @@ onUnmounted(() => {
   font-size: 0.875rem;
 }
 .create-schedule-btn:hover:not(:disabled) {
-  background: #059669;
+  background-color: #3a7a9a;
 }
 .create-schedule-btn:disabled {
-  background: #9ca3af;
+  background-color: #94a3b8;
   cursor: not-allowed;
 }
+
 .refresh-btn {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: #3b82f6;
-  color: white;
-  border: none;
+  background: white;
+  color: #4892b4;
+  border: 2px solid #4892b4;
   border-radius: 0.375rem;
   cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
 }
 .refresh-btn:hover:not(:disabled) {
-  background: #2563eb;
+  background: #eff6ff;
+  color: #3a7a9a;
+  border-color: #3a7a9a;
 }
 .refresh-btn:disabled {
-  background: #9ca3af;
+  background: #f8fafc;
+  color: #94a3b8;
+  border-color: #cbd5e1;
   cursor: not-allowed;
 }
+
 .spinning {
   animation: spin 1s linear infinite;
 }
@@ -2582,14 +2625,14 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   padding: 3rem;
-  color: #6b7280;
+  color: #4892b4;
   text-align: center;
 }
 .loading-spinner {
   width: 2rem;
   height: 2rem;
   border: 3px solid #e5e7eb;
-  border-top-color: #3b82f6;
+  border-top-color: #4892b4;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
@@ -2645,18 +2688,21 @@ onUnmounted(() => {
   color: #6b7280;
   font-size: 0.875rem;
 }
+
+/* Специальность в расписании — СИНИЙ */
 .schedule-specialization {
   display: flex;
   align-items: center;
   gap: 0.25rem;
   font-size: 0.75rem;
-  color: #7c3aed;
-  background: #f5f3ff;
+  color: #4892b4;
+  background: #eff6ff;
   padding: 0.25rem 0.5rem;
   border-radius: 0.25rem;
   margin-top: 0.25rem;
   width: fit-content;
-  font-weight: 500;
+  font-weight: 600;
+  border: 1px solid #bae6fd;
 }
 .spec-mini-icon {
   width: 0.75rem;
@@ -2679,6 +2725,7 @@ onUnmounted(() => {
 .info-icon {
   width: 0.875rem;
   height: 0.875rem;
+  color: #64748b;
 }
 .slots-available {
   color: #10b981;
@@ -2697,7 +2744,7 @@ onUnmounted(() => {
   align-items: center;
 }
 .edit-capacity-btn:hover:not(:disabled) {
-  color: #3b82f6;
+  color: #4892b4;
   background: #eff6ff;
 }
 .edit-capacity-btn:disabled {
@@ -2771,16 +2818,19 @@ onUnmounted(() => {
   gap: 0.25rem;
   margin-bottom: 0.5rem;
 }
+
+/* Назначенные студенты — тоже СИНИЙ */
 .assigned-student-tag {
-  background: #d1fae5;
-  color: #065f46;
+  background: #eff6ff;
+  color: #4892b4;
   padding: 0.125rem 0.5rem;
   border-radius: 9999px;
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
   display: inline-flex;
   align-items: center;
   gap: 0.125rem;
+  border: 1px solid #bae6fd;
 }
 .student-group-inline {
   color: #6b7280;
@@ -2819,19 +2869,19 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: #10b981;
+  background-color: #10b981;
   color: white;
   border: none;
   border-radius: 0.375rem;
   cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 500;
+  transition: background-color 0.2s;
+  font-weight: 600;
 }
 .assign-btn:hover:not(:disabled) {
-  background: #059669;
+  background-color: #059669;
 }
 .assign-btn:disabled {
-  background: #9ca3af;
+  background-color: #94a3b8;
   cursor: not-allowed;
 }
 .btn-specialty-mismatch {
@@ -2859,9 +2909,10 @@ onUnmounted(() => {
   color: #dc2626;
 }
 .no-selection {
-  background: #f0f9ff;
+  background: #eff6ff;
   border: 1px solid #bae6fd;
-  color: #0369a1;
+  color: #4892b4;
+  font-weight: 500;
 }
 .full-icon {
   width: 1rem;
@@ -3053,8 +3104,8 @@ onUnmounted(() => {
 }
 .form-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  border-color: #4892b4;
+  box-shadow: 0 0 0 3px rgba(72, 146, 180, 0.15);
 }
 .form-input:disabled {
   background: #f3f4f6;
@@ -3094,11 +3145,11 @@ onUnmounted(() => {
   background: #d1d5db;
 }
 .modal-confirm {
-  background: #3b82f6;
+  background: #4892b4;
   color: white;
 }
 .modal-confirm:hover:not(:disabled) {
-  background: #2563eb;
+  background: #3a7a9a;
 }
 .modal-confirm:disabled {
   background: #9ca3af;
@@ -3223,16 +3274,16 @@ onUnmounted(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: #2563eb;
+  background-color: #4892b4;
   color: white;
   border: none;
   border-radius: 0.375rem;
   cursor: pointer;
   font-size: 0.875rem;
   font-weight: 500;
-  transition: background 0.2s;
+  transition: background-color 0.2s;
 }
 .download-btn:hover {
-  background: #1d4ed8;
+  background-color: #3a7a9a;
 }
 </style>

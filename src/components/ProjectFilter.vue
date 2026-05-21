@@ -789,18 +789,24 @@ h4 {
   cursor: pointer;
   transition: background-color 0.2s;
 }
-
+/* --- Кнопка "Показать проекты" --- */
 .apply-button {
-  background-color: #3b82f6;
+  background-color: #4892b4; /* ✅ Ваш фирменный голубой */
   color: white;
 }
 
 .apply-button:hover:not(:disabled) {
-  background-color: #2563eb;
+  background-color: #3a7a9a; /* ✅ Темнее при наведении */
+  transform: translateY(-1px); /* ✅ Легкий эффект нажатия */
+  box-shadow: 0 4px 12px rgba(72, 146, 180, 0.3); /* ✅ Тень в тон */
+}
+
+.apply-button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .apply-button:disabled {
-  background-color: #94a3b8;
+  background-color: #94a3b8; /* ✅ Приглушенный серый для disabled */
   cursor: not-allowed;
 }
 
