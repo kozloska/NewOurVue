@@ -1378,6 +1378,7 @@ export default {
     },
 
     // === Подготовка данных для шаблона ===
+    // === Подготовка данных для шаблона ===
     async prepareTemplateData(student, protocol, project) {
       const specialization = student.ID_Specialization;
       const commission = protocol.ID_DefenseSchedule?.ID_Commission;
@@ -1409,12 +1410,14 @@ export default {
           m.Role === "Член аттестационной комиссии "
       );
 
-      let question1 = " ",
-        question2 = " ";
+      // Инициализируем вопросы пустыми строками, чтобы не было undefined
+      let question1Text = "";
+      let question2Text = "";
+
       if (protocol.ID_Question) {
         try {
           const q1 = await api.get(`/api/questions/${protocol.ID_Question}/`);
-          question1 = q1.data.Text;
+          question1Text = q1.data.Text || "";
         } catch (e) {
           console.error("Ошибка вопроса 1:", e);
         }
@@ -1422,7 +1425,7 @@ export default {
       if (protocol.ID_Question2) {
         try {
           const q2 = await api.get(`/api/questions/${protocol.ID_Question2}/`);
-          question2 = q2.data.Text;
+          question2Text = q2.data.Text || "";
         } catch (e) {
           console.error("Ошибка вопроса 2:", e);
         }
@@ -1450,6 +1453,16 @@ export default {
         );
       })();
 
+      // === Формируем массив вопросов для цикла в шаблоне ===
+      // Это решит проблему с "2) undefined", если второго вопроса нет
+      const questionsList = [];
+      if (question1Text && question1Text.trim() !== "") {
+        questionsList.push({ number: 1, text: question1Text.trim() });
+      }
+      if (question2Text && question2Text.trim() !== "") {
+        questionsList.push({ number: 2, text: question2Text.trim() });
+      }
+
       return {
         starthours: startTime.hours,
         startmin: startTime.minutes,
@@ -1467,8 +1480,15 @@ export default {
         secretary: secretary
           ? this.getInitials(secretary.ID_Member)
           : "Не указан",
-        question1,
-        question2,
+
+        // ✅ Добавляем список вопросов для нового шаблона
+        questionsList: questionsList,
+
+        // ✅ Оставляем старые поля для совместимости, если шаблон еще не переделан
+        // Но теперь они гарантированно не будут "undefined"
+        question1: question1Text,
+        question2: question2Text,
+
         number: protocol.Number || "Не указан",
         members: members.map((m) => ({ name: this.getInitials(m.ID_Member) })),
       };

@@ -751,6 +751,8 @@ const saveAs = (blob, filename) => {
 
 // ==================== TEMPLATE DATA PREPARATION ====================
 
+// ==================== TEMPLATE DATA PREPARATION ====================
+
 const prepareTemplateData = async (protocol) => {
   const student = protocol.ID_Student;
   const project = student?.ID_Project;
@@ -786,24 +788,38 @@ const prepareTemplateData = async (protocol) => {
       m.Role === "Член аттестационной комиссии "
   );
 
-  // Загрузка вопросов
-  let question1 = " ",
-    question2 = " ";
+  // === Загрузка вопросов (безопасная) ===
+  let q1Text = "";
+  let q2Text = "";
+
   if (protocol.ID_Question) {
     try {
       const q1 = await api.get(`/api/questions/${protocol.ID_Question}/`);
-      question1 = q1.data.Text;
+      // Гарантируем, что это строка
+      q1Text = q1.data.Text ? String(q1.data.Text).trim() : "";
     } catch (e) {
       console.error("Ошибка вопроса 1:", e);
     }
   }
+
   if (protocol.ID_Question2) {
     try {
       const q2 = await api.get(`/api/questions/${protocol.ID_Question2}/`);
-      question2 = q2.data.Text;
+      // Гарантируем, что это строка
+      q2Text = q2.data.Text ? String(q2.data.Text).trim() : "";
     } catch (e) {
       console.error("Ошибка вопроса 2:", e);
     }
+  }
+
+  // === Формируем массив вопросов для шаблона ===
+  // Это позволит убрать "2)" если второго вопроса нет
+  const questionsList = [];
+  if (q1Text) {
+    questionsList.push({ number: 1, text: q1Text });
+  }
+  if (q2Text) {
+    questionsList.push({ number: 2, text: q2Text });
   }
 
   // Склонение ФИО
@@ -843,8 +859,14 @@ const prepareTemplateData = async (protocol) => {
     qualification:
       getQualificationName(student?.ID_Qualification, student) || "Бакалавр",
     secretary: secretary ? getInitials(secretary.ID_Member) : "Не указан",
-    question1: question1,
-    question2: question2,
+
+    // ✅ Передаем список вопросов
+    questionsList: questionsList,
+
+    // Оставляем старые поля для совместимости, но теперь они чистые
+    question1: q1Text,
+    question2: q2Text,
+
     number: protocol.Number || protocol.ID,
     members: membersForSignatures,
   };
