@@ -395,7 +395,7 @@ const generationProgress = ref(0);
 const currentGeneratingStudent = ref("");
 const notifications = ref([]);
 const currentPage = ref(1);
-const itemsPerPage = ref(20);
+const itemsPerPage = ref(8);
 const generatingDocx = ref({});
 const templateBuffer = ref(null);
 
