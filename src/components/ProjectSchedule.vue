@@ -1783,8 +1783,6 @@ const removeNotification = (id) => {
   if (i > -1) notifications.value.splice(i, 1);
 };
 
-// === EXPORT TO WORD ===
-
 const downloadScheduleDoc = async (schedule) => {
   try {
     const assignedData = getAssignedProjectsData(schedule.ID);
@@ -1793,36 +1791,43 @@ const downloadScheduleDoc = async (schedule) => {
       return;
     }
 
-    let projectIndex = 1;
-    const projectsList = [];
+    const projects = [];
+    let projectNum = 1;
 
-    assignedData.forEach((projectData) => {
-      const { project, assignedStudents } = projectData;
+    assignedData.forEach(({ project, assignedStudents }) => {
       if (!assignedStudents?.length) return;
 
-      assignedStudents.forEach((student, idx) => {
-        const studentName = `${student.Surname || ""} ${student.Name || ""} ${
+      // Формируем список студентов для текущего проекта
+      const students = assignedStudents.map((student) => ({
+        student_name: `${student.Surname || ""} ${student.Name || ""} ${
           student.Patronymic || ""
-        }`.trim();
-        projectsList.push({
-          num: idx === 0 ? projectIndex : "",
-          title: idx === 0 ? project.Title || "" : "",
-          student_name: studentName,
-          group: idx === 0 ? student.ID_Group?.Name || "-" : "",
-        });
+        }`.trim(),
+        group: student.ID_Group?.Name || "-",
+        grade: "", // Пусто для оценки
+      }));
+
+      // Добавляем проект в общий список
+      projects.push({
+        num: projectNum,
+        title: project.Title || "Без названия",
+        // ВАЖНО: Проверьте, как у вас называется поле руководителя в объекте project
+        // Например: project.Supervisor, project.Teacher, project.Lecturer
+        supervisor: project.Supervisor || project.Teacher || "Не указан",
+        students: students,
       });
-      projectIndex++;
+
+      projectNum++;
     });
 
     const data = {
       date: formatDate(schedule.DateTime),
       classroom: schedule.Class,
-      projects: projectsList,
+      projects: projects,
     };
 
+    // Используем шаблон с вложенной структурой
     const response = await fetch("/pck/templates/temp.docx");
-    if (!response.ok)
-      throw new Error("Не удалось загрузить temp.docx из папки public");
+    if (!response.ok) throw new Error("Не удалось загрузить шаблон");
 
     const arrayBuffer = await response.arrayBuffer();
     const zip = new PizZip(arrayBuffer);
@@ -1848,7 +1853,6 @@ const downloadScheduleDoc = async (schedule) => {
     addNotification(`Ошибка: ${error.message}`, "error");
   }
 };
-
 // === REFRESH & LIFECYCLE ===
 
 const refreshData = async () => {
