@@ -512,6 +512,16 @@ const isPartiallySelected = computed(() => {
   );
 });
 
+const getFullProtocolData = async (protocolId) => {
+  try {
+    const response = await api.get(`/api/protocols/${protocolId}/`);
+    return response.data;
+  } catch (error) {
+    console.error("Ошибка загрузки полных данных протокола:", error);
+    return null;
+  }
+};
+
 // ==================== DATA LOADING (ОПТИМИЗИРОВАНО) ====================
 
 const loadProtocols = async () => {
@@ -650,7 +660,14 @@ const generateDocx = async (protocol) => {
   generatingDocx.value[protocol.ID] = true;
 
   try {
-    const templateData = await prepareTemplateData(protocol);
+    // ✅ Сначала загружаем полные данные протокола
+    const fullProtocol = await getFullProtocolData(protocol.ID);
+    if (!fullProtocol) {
+      addNotification("Не удалось загрузить данные протокола", "error");
+      return;
+    }
+
+    const templateData = await prepareTemplateData(fullProtocol);
 
     const zip = new PizZip(templateBuffer.value);
     const doc = new Docxtemplater(zip, {
@@ -671,12 +688,12 @@ const generateDocx = async (protocol) => {
     });
 
     const fileName = `Протокол_${
-      protocol.Number || protocol.ID
+      fullProtocol.Number || fullProtocol.ID
     }_${templateData.student.replace(/\s+/g, "_")}.docx`;
     saveAs(blob, fileName);
 
     addNotification(
-      `Протокол для ${getStudentFullName(protocol)} создан`,
+      `Протокол для ${getStudentFullName(fullProtocol)} создан`,
       "success"
     );
   } catch (error) {
@@ -690,6 +707,7 @@ const generateDocx = async (protocol) => {
   }
 };
 
+// === МАССОВАЯ ГЕНЕРАЦИЯ ===
 const generateSelectedProtocols = async () => {
   if (selectedProtocols.value.length === 0) return;
 
@@ -706,13 +724,15 @@ const generateSelectedProtocols = async () => {
   try {
     for (let i = 0; i < selectedProtocols.value.length; i++) {
       const protocolId = selectedProtocols.value[i];
-      const protocol = protocols.value.find((p) => p.ID === protocolId);
 
-      if (protocol) {
-        currentGeneratingStudent.value = getStudentFullName(protocol);
+      // ✅ Загружаем полные данные для каждого протокола
+      const fullProtocol = await getFullProtocolData(protocolId);
+
+      if (fullProtocol) {
+        currentGeneratingStudent.value = getStudentFullName(fullProtocol);
 
         try {
-          const templateData = await prepareTemplateData(protocol);
+          const templateData = await prepareTemplateData(fullProtocol);
 
           const zip = new PizZip(templateBuffer.value);
           const doc = new Docxtemplater(zip, {
@@ -733,16 +753,16 @@ const generateSelectedProtocols = async () => {
               type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             }),
             filename: `Протокол_${
-              protocol.Number || protocol.ID
+              fullProtocol.Number || fullProtocol.ID
             }_${templateData.student.replace(/\s+/g, "_")}.docx`,
           });
 
           generationProgress.value++;
-          await new Promise((resolve) => setTimeout(resolve, 100)); // Чуть быстрее пауза
+          await new Promise((resolve) => setTimeout(resolve, 100));
         } catch (error) {
           console.error(error);
           addNotification(
-            `Ошибка в протоколе ${getStudentFullName(protocol)}`,
+            `Ошибка в протоколе ${getStudentFullName(fullProtocol)}`,
             "error"
           );
         }
