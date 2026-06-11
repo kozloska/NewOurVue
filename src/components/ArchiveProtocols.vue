@@ -354,6 +354,7 @@
     </div>
   </div>
 </template>
+
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
 import api from "@/services/api";
@@ -399,9 +400,9 @@ const itemsPerPage = ref(8);
 const generatingDocx = ref({});
 const templateBuffer = ref(null);
 
-// ✅ НОВЫЕ: Квалификации
-const qualifications = ref({}); // qualifications[specId] = массив квалификаций
-const loadingQualifications = ref({}); // loadingQualifications[specId] = boolean
+// Квалификации
+const qualifications = ref({});
+const loadingQualifications = ref({});
 
 let searchTimeout = null;
 
@@ -415,9 +416,11 @@ const activeFiltersCount = computed(() => {
   return count;
 });
 
+// === ИСПРАВЛЕННАЯ СОРТИРОВКА ===
 const filteredProtocols = computed(() => {
   let filtered = protocols.value.filter((protocol) => protocol.Status === true);
 
+  // Фильтрация
   if (searchQuery.value && searchQuery.value.trim()) {
     const query = searchQuery.value.toLowerCase().trim();
     filtered = filtered.filter((protocol) => {
@@ -440,10 +443,38 @@ const filteredProtocols = computed(() => {
     );
   }
 
+  // === НОВАЯ ЛОГИКА СОРТИРОВКИ ===
   return filtered.sort((a, b) => {
+    // 1. Сначала сортируем по году (по убыванию, чтобы новые были сверху)
+    const yearA = Number(a.Year) || 0;
+    const yearB = Number(b.Year) || 0;
+
+    if (yearA !== yearB) {
+      return yearB - yearA;
+    }
+
+    // 2. Если годы равны, сортируем по номеру протокола
+    // Пытаемся превратить номер в число. Если там "1-Ю-2026", берем первую часть до дефиса или само число
+    const parseNum = (val) => {
+      if (!val) return 0;
+      // Если это объект (иногда API присылает ID), берем ID или само значение
+      const strVal = String(val);
+      // Регулярка ищет первое число в строке
+      const match = strVal.match(/^(\d+)/);
+      return match ? parseInt(match[1], 10) : 0;
+    };
+
+    const numA = parseNum(a.Number || a.ID);
+    const numB = parseNum(b.Number || b.ID);
+
+    if (numA !== numB) {
+      return numA - numB; // По возрастанию (1, 2, 3...)
+    }
+
+    // 3. Если и номера совпадают (или их нет), сортируем по дате защиты
     const dateA = new Date(a.ID_DefenseSchedule?.DateTime || 0);
     const dateB = new Date(b.ID_DefenseSchedule?.DateTime || 0);
-    return dateB - dateA;
+    return dateA - dateB;
   });
 });
 
@@ -481,17 +512,25 @@ const isPartiallySelected = computed(() => {
   );
 });
 
-// ==================== DATA LOADING ====================
+// ==================== DATA LOADING (ОПТИМИЗИРОВАНО) ====================
 
 const loadProtocols = async () => {
   try {
+    // Убрали page_size: 1000, пусть бэкенд отдает дефолт (обычно 50-100) или ставим разумный лимит
+    // Если нужно ВСЕ сразу, лучше оставить большой лимит, но грузить параллельно
     const response = await api.get("/api/protocols/", {
-      params: { Status: true, page_size: 1000 },
+      params: { Status: true },
     });
-    protocols.value = response.data.results || response.data;
 
-    // ✅ Предзагрузка квалификаций для всех специализаций
-    const specIds = [
+    // Обработка разных форматов ответа API
+    const data = response.data.results || response.data;
+    protocols.value = Array.isArray(data) ? data : [];
+
+    console.log("Загружено протоколов:", protocols.value.length);
+
+    // === ОПТИМИЗАЦИЯ: Загружаем квалификации ПАРАЛЛЕЛЬНО, а не в цикле ===
+    // Собираем уникальные ID специализаций
+    const uniqueSpecIds = [
       ...new Set(
         protocols.value
           .map(
@@ -502,16 +541,17 @@ const loadProtocols = async () => {
           .filter((id) => id)
       ),
     ];
-    for (const specId of specIds) {
-      if (!qualifications.value[specId]) {
-        await loadQualificationsForSpecialization(specId);
-      }
-    }
 
-    console.log("Загружено протоколов:", protocols.value.length);
+    // Создаем массив промисов и запускаем их одновременно
+    const qualificationPromises = uniqueSpecIds.map((specId) =>
+      loadQualificationsForSpecialization(specId)
+    );
+
+    // Ждем выполнения всех запросов, не блокируя основной поток по одному
+    await Promise.all(qualificationPromises);
   } catch (error) {
     console.error("Ошибка загрузки протоколов:", error);
-    addNotification("Ошибка загрузки протоколов", "error");
+    addNotification("Ошибка загрузки данных", "error");
   }
 };
 
@@ -521,15 +561,17 @@ const loadSpecializations = async () => {
     specializations.value = response.data;
   } catch (error) {
     console.error("Ошибка загрузки специализаций:", error);
-    addNotification("Ошибка загрузки специализаций", "error");
   }
 };
 
-// ✅ Загрузка квалификаций для специализации
+// ✅ Оптимизированная загрузка квалификаций
 const loadQualificationsForSpecialization = async (specializationId) => {
   if (!specializationId || qualifications.value[specializationId]) return;
 
+  // Ставим флаг загрузки, чтобы не дергать дважды
+  if (loadingQualifications.value[specializationId]) return;
   loadingQualifications.value[specializationId] = true;
+
   try {
     const response = await api.get("/api/qualifications/", {
       params: { ID_Specialization: specializationId },
@@ -552,15 +594,11 @@ const loadTemplate = async () => {
   try {
     const response = await fetch("/pck/templates/test.docx");
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    // ✅ Важно: arrayBuffer(), а не .data
     templateBuffer.value = await response.arrayBuffer();
     console.log("Шаблон успешно загружен");
   } catch (error) {
     console.error("Ошибка загрузки шаблона:", error);
-    addNotification(
-      "Ошибка загрузки шаблона документа. Проверьте путь /templates/test.docx",
-      "error"
-    );
+    addNotification("Ошибка загрузки шаблона документа.", "error");
   }
 };
 
@@ -609,10 +647,7 @@ const generateDocx = async (protocol) => {
   if (generatingDocx.value[protocol.ID]) return;
 
   if (!templateBuffer.value) {
-    addNotification(
-      "Шаблон документа ещё загружается или не найден.",
-      "warning"
-    );
+    addNotification("Шаблон документа ещё загружается.", "warning");
     await loadTemplate();
     if (!templateBuffer.value) return;
   }
@@ -664,7 +699,7 @@ const generateSelectedProtocols = async () => {
   if (selectedProtocols.value.length === 0) return;
 
   if (!templateBuffer.value) {
-    addNotification("Шаблон не загружен. Повторите попытку.", "error");
+    addNotification("Шаблон не загружен.", "error");
     await loadTemplate();
     if (!templateBuffer.value) return;
   }
@@ -708,8 +743,7 @@ const generateSelectedProtocols = async () => {
           });
 
           generationProgress.value++;
-          // Небольшая пауза для обработки браузером
-          await new Promise((resolve) => setTimeout(resolve, 200));
+          await new Promise((resolve) => setTimeout(resolve, 100)); // Чуть быстрее пауза
         } catch (error) {
           console.error(error);
           addNotification(
@@ -751,8 +785,6 @@ const saveAs = (blob, filename) => {
 
 // ==================== TEMPLATE DATA PREPARATION ====================
 
-// ==================== TEMPLATE DATA PREPARATION ====================
-
 const prepareTemplateData = async (protocol) => {
   const student = protocol.ID_Student;
   const project = student?.ID_Project;
@@ -776,7 +808,6 @@ const prepareTemplateData = async (protocol) => {
         : response.data.results || [];
     } catch (error) {
       console.error("Ошибка загрузки состава комиссии:", error);
-      commissionMembers = [];
     }
   }
 
@@ -788,39 +819,42 @@ const prepareTemplateData = async (protocol) => {
       m.Role === "Член аттестационной комиссии "
   );
 
-  // === Загрузка вопросов (безопасная) ===
+  // === Загрузка вопросов ===
   let q1Text = "";
   let q2Text = "";
 
+  // Используем Promise.all для параллельной загрузки вопросов, если они есть
+  const questionPromises = [];
+
   if (protocol.ID_Question) {
-    try {
-      const q1 = await api.get(`/api/questions/${protocol.ID_Question}/`);
-      // Гарантируем, что это строка
-      q1Text = q1.data.Text ? String(q1.data.Text).trim() : "";
-    } catch (e) {
-      console.error("Ошибка вопроса 1:", e);
-    }
+    questionPromises.push(
+      api
+        .get(`/api/questions/${protocol.ID_Question}/`)
+        .then((res) => (res.data.Text ? String(res.data.Text).trim() : ""))
+        .catch(() => "")
+    );
+  } else {
+    questionPromises.push(Promise.resolve(""));
   }
 
   if (protocol.ID_Question2) {
-    try {
-      const q2 = await api.get(`/api/questions/${protocol.ID_Question2}/`);
-      // Гарантируем, что это строка
-      q2Text = q2.data.Text ? String(q2.data.Text).trim() : "";
-    } catch (e) {
-      console.error("Ошибка вопроса 2:", e);
-    }
+    questionPromises.push(
+      api
+        .get(`/api/questions/${protocol.ID_Question2}/`)
+        .then((res) => (res.data.Text ? String(res.data.Text).trim() : ""))
+        .catch(() => "")
+    );
+  } else {
+    questionPromises.push(Promise.resolve(""));
   }
 
-  // === Формируем массив вопросов для шаблона ===
-  // Это позволит убрать "2)" если второго вопроса нет
+  const [resQ1, resQ2] = await Promise.all(questionPromises);
+  q1Text = resQ1;
+  q2Text = resQ2;
+
   const questionsList = [];
-  if (q1Text) {
-    questionsList.push({ number: 1, text: q1Text });
-  }
-  if (q2Text) {
-    questionsList.push({ number: 2, text: q2Text });
-  }
+  if (q1Text) questionsList.push({ number: 1, text: q1Text });
+  if (q2Text) questionsList.push({ number: 2, text: q2Text });
 
   // Склонение ФИО
   let studentDative = getFullName(student);
@@ -833,8 +867,8 @@ const prepareTemplateData = async (protocol) => {
     console.error("Ошибка склонения ФИО:", error);
   }
 
-  // ✅ Загружаем квалификации для специализации студента, если нужно
   const specId = student?.ID_Specialization?.ID || student?.ID_Specialization;
+  // Проверка наличия квалификаций уже сделана при загрузке, но на всякий случай
   if (specId && !qualifications.value[specId]) {
     await loadQualificationsForSpecialization(specId);
   }
@@ -859,14 +893,9 @@ const prepareTemplateData = async (protocol) => {
     qualification:
       getQualificationName(student?.ID_Qualification, student) || "Бакалавр",
     secretary: secretary ? getInitials(secretary.ID_Member) : "Не указан",
-
-    // ✅ Передаем список вопросов
     questionsList: questionsList,
-
-    // Оставляем старые поля для совместимости, но теперь они чистые
     question1: q1Text,
     question2: q2Text,
-
     number: protocol.Number || protocol.ID,
     members: membersForSignatures,
   };
@@ -876,13 +905,9 @@ const prepareTemplateData = async (protocol) => {
 
 const getQualificationName = (qualificationId, student) => {
   if (!qualificationId) return "Не указана";
-
-  // Если это объект с полем Name
   if (typeof qualificationId === "object" && qualificationId.Name) {
     return qualificationId.Name;
   }
-
-  // Если это просто ID — ищем в загруженных квалификациях
   const specId = student?.ID_Specialization?.ID || student?.ID_Specialization;
   if (specId && qualifications.value[specId]) {
     const qual = qualifications.value[specId].find(
@@ -890,7 +915,6 @@ const getQualificationName = (qualificationId, student) => {
     );
     if (qual) return qual.Name;
   }
-
   return "Бакалавр";
 };
 
@@ -916,12 +940,12 @@ const formatDateTimeForDoc = (dateTimeStr) => {
   } ${date.getFullYear()} г.`;
 };
 
-// Форматирование даты защиты для отображения в таблице (используется в шаблоне)
 const formatDefenseDate = (dateTimeStr) => {
   if (!dateTimeStr) return "—";
   const date = new Date(dateTimeStr);
   return date.toLocaleDateString("ru-RU");
 };
+
 const createZipArchive = async (files) => {
   const zip = new JSZip();
   files.forEach((file) => {
