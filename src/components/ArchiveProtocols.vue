@@ -516,20 +516,17 @@ const isPartiallySelected = computed(() => {
 
 const loadProtocols = async () => {
   try {
-    // Убрали page_size: 1000, пусть бэкенд отдает дефолт (обычно 50-100) или ставим разумный лимит
-    // Если нужно ВСЕ сразу, лучше оставить большой лимит, но грузить параллельно
-    const response = await api.get("/api/protocols/", {
+    // ✅ ИСПОЛЬЗУЕМ НОВЫЙ ОПТИМИЗИРОВАННЫЙ ENDPOINT
+    const response = await api.get("/api/protocols-archive/", {
       params: { Status: true },
     });
 
-    // Обработка разных форматов ответа API
     const data = response.data.results || response.data;
     protocols.value = Array.isArray(data) ? data : [];
 
     console.log("Загружено протоколов:", protocols.value.length);
 
-    // === ОПТИМИЗАЦИЯ: Загружаем квалификации ПАРАЛЛЕЛЬНО, а не в цикле ===
-    // Собираем уникальные ID специализаций
+    // Загружаем квалификации параллельно
     const uniqueSpecIds = [
       ...new Set(
         protocols.value
@@ -542,12 +539,10 @@ const loadProtocols = async () => {
       ),
     ];
 
-    // Создаем массив промисов и запускаем их одновременно
     const qualificationPromises = uniqueSpecIds.map((specId) =>
       loadQualificationsForSpecialization(specId)
     );
 
-    // Ждем выполнения всех запросов, не блокируя основной поток по одному
     await Promise.all(qualificationPromises);
   } catch (error) {
     console.error("Ошибка загрузки протоколов:", error);
