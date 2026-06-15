@@ -25,16 +25,34 @@
         </div>
 
         <div class="filter-group">
-          <div class="select-wrapper">
-            <select v-model="selectedYear" class="filter-select">
-              <option value="">Все годы</option>
-              <option v-for="year in availableYears" :key="year" :value="year">
-                {{ year }}
-              </option>
-            </select>
-            <ChevronDownIcon class="select-arrow" />
+          <!-- Обертка для Года + Кнопки Excel -->
+          <div class="year-excel-wrapper">
+            <div class="select-wrapper year-select">
+              <select v-model="selectedYear" class="filter-select">
+                <option value="">Все годы</option>
+                <option
+                  v-for="year in availableYears"
+                  :key="year"
+                  :value="year"
+                >
+                  {{ year }}
+                </option>
+              </select>
+              <ChevronDownIcon class="select-arrow" />
+            </div>
+
+            <!-- Кнопка Excel теперь внутри обертки -->
+            <button
+              v-if="activeFiltersCount > 0"
+              @click="downloadExcel"
+              class="btn-excel-inline"
+              title="Скачать Excel за выбранный период"
+            >
+              <FileSpreadsheetIcon class="btn-icon" />
+            </button>
           </div>
 
+          <!-- Остальные фильтры -->
           <div class="select-wrapper">
             <select v-model="selectedSpecialization" class="filter-select">
               <option value="">Все направления</option>
@@ -382,6 +400,7 @@ import {
   InboxIcon,
   Loader2Icon,
   ChevronDownIcon,
+  FileSpreadsheetIcon,
 } from "lucide-vue-next";
 
 // ==================== STATE ====================
@@ -389,7 +408,7 @@ const protocols = ref([]);
 const specializations = ref([]);
 const selectedProtocols = ref([]);
 const searchQuery = ref("");
-const selectedYear = ref("");
+const selectedYear = ref(new Date().getFullYear());
 const selectedSpecialization = ref("");
 const isGenerating = ref(false);
 const generationProgress = ref(0);
@@ -644,6 +663,49 @@ const toggleSelectAll = () => {
 
 const clearSelection = () => {
   selectedProtocols.value = [];
+};
+
+const downloadExcel = async () => {
+  try {
+    const params = {};
+
+    if (selectedYear.value) {
+      params.Year = selectedYear.value;
+    }
+
+    if (selectedSpecialization.value) {
+      params.ID_Student__ID_Specialization = selectedSpecialization.value;
+    }
+
+    if (searchQuery.value && searchQuery.value.trim()) {
+      params.search = searchQuery.value.trim();
+    }
+
+    const response = await api.get("/api/protocols-archive/export_excel/", {
+      params,
+      responseType: "blob",
+    });
+
+    // ✅ Формируем адекватное имя файла
+    const yearPart = selectedYear.value
+      ? `_${selectedYear.value}`
+      : "_Все_годы";
+    const fileName = `Протоколы_ЦК${yearPart}.xlsx`;
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", fileName);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+    addNotification("Excel файл успешно скачан", "success");
+  } catch (error) {
+    console.error("Ошибка скачивания Excel:", error);
+    addNotification("Ошибка при скачивании Excel файла", "error");
+  }
 };
 
 // ==================== GENERATION LOGIC ====================
@@ -1745,7 +1807,44 @@ input[type="checkbox"] {
 .spinning {
   animation: spin 1s linear infinite;
 }
+.year-excel-wrapper {
+  display: flex;
+  align-items: stretch;
+  border-radius: 0.5rem;
+  overflow: hidden; /* Чтобы скругление работало корректно */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
 
+/* Убираем правое скругление у селекта года */
+.year-select .filter-select {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none; /* Убираем границу между селектом и кнопкой */
+  min-width: 140px;
+}
+
+/* Стили кнопки Excel "вшитой" в селект */
+.btn-excel-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.75rem;
+  background-color: #4892b4; /* Ваш фирменный синий */
+  color: white;
+  border: 1px solid #4892b4;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 44px; /* Фиксированная ширина под иконку */
+}
+
+.btn-excel-inline:hover {
+  background-color: #3a7a99; /* Темнее при наведении */
+  border-color: #3a7a99;
+}
+
+.btn-excel-inline:active {
+  transform: scale(0.96);
+}
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -1808,6 +1907,35 @@ input[type="checkbox"] {
 
   .bulk-buttons {
     justify-content: space-between;
+  }
+  /* === КНОПКА EXCEL === */
+  .btn-excel {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    background: #4892b4;
+    color: white;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .btn-excel:hover {
+    background: #3a7a99;
+  }
+
+  .btn-excel:active {
+    transform: scale(0.98);
+  }
+
+  .btn-excel .btn-icon {
+    width: 1rem;
+    height: 1rem;
   }
 }
 </style>
