@@ -1894,22 +1894,20 @@ onUnmounted(() => {
 
 <style scoped>
 .schedule-container {
-  --color-primary: #4892b4; /* Основной синий (сайдбар) */
-  --color-primary-hover: #3a7a99; /* Темнее при наведении */
+  --color-primary: #4892b4;
+  --color-primary-hover: #3a7a99;
   --color-primary-light: rgba(72, 146, 180, 0.1);
   --color-primary-border: rgba(72, 146, 180, 0.3);
 
-  /* Зеленый оставляем только для статусов успеха/протоколов, если нужно, 
-     но из кнопок и акцентов убираем */
   --color-accent: #42b983;
   --color-accent-hover: #359669;
 
-  --color-bg: #f8fafc; /* Фон страницы */
-  --color-bg-card: #ffffff; /* Фон карточек */
-  --color-border: #e2e8f0; /* Границы */
-  --color-text-primary: #1f2937; /* Основной текст */
-  --color-text-secondary: #6b7280; /* Вторичный текст */
-  --color-error: #ef4444; /* Ошибки */
+  --color-bg: #f8fafc;
+  --color-bg-card: #ffffff;
+  --color-border: #e2e8f0;
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #6b7280;
+  --color-error: #ef4444;
   --color-error-light: #fee2e2;
   --color-warning: #f59e0b;
   --color-success: #10b981;
@@ -2058,7 +2056,6 @@ onUnmounted(() => {
   transition: all 0.2s;
   font-weight: 500;
 
-  /* Гарантируем, что само поле не растягивается */
   box-sizing: border-box;
 }
 
@@ -2087,6 +2084,17 @@ onUnmounted(() => {
   color: var(--color-text-secondary);
   display: flex;
   align-items: center;
+}
+.spec-select option {
+  font-size: 0.9rem;
+  padding: 8px 12px;
+  background: white;
+  color: var(--color-text-primary);
+
+  white-space: normal !important;
+  word-wrap: break-word;
+
+  max-width: 100%;
 }
 .spec-clear-btn {
   display: flex;
@@ -2210,19 +2218,6 @@ onUnmounted(() => {
   height: 1rem;
   color: var(--color-text-secondary);
   pointer-events: none;
-}
-.spec-select option {
-  font-size: 0.9rem; /* Такой же шрифт, как в поле */
-  padding: 8px 12px; /* Удобные отступы */
-  background: white;
-  color: var(--color-text-primary);
-
-  /* Разрешаем перенос длинных названий на новую строку */
-  white-space: normal !important;
-  word-wrap: break-word;
-
-  /* Ширина списка будет равна ширине поля select */
-  max-width: 100%;
 }
 .search-input {
   width: 100%;
@@ -2927,8 +2922,8 @@ onUnmounted(() => {
 .assigned-project-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start; /* Выравнивание по верху, чтобы крестик не улетал вниз */
-  gap: 12px; /* Отступ между текстом и крестиком */
+  align-items: flex-start;
+  gap: 12px;
   margin-bottom: 0.5rem;
   width: 100%;
 }
@@ -2938,14 +2933,14 @@ onUnmounted(() => {
   color: var(--color-text-primary);
   font-size: 0.9rem;
   line-height: 1.4;
-  flex: 1; /* Занимает все свободное место */
-  min-width: 0; /* Разрешает сжатие меньше контента (важно для flex) */
-  word-break: break-word; /* Переносит длинные слова */
-  overflow-wrap: break-word; /* То же самое для совместимости */
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .unassign-btn {
-  flex-shrink: 0; /* 🔥 Запрещает крестику сжиматься */
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2955,7 +2950,7 @@ onUnmounted(() => {
   padding: 4px;
   color: var(--color-text-secondary);
   transition: color 0.2s;
-  margin-top: 2px; /* Чуть опустить, чтобы было по центру первой строки */
+  margin-top: 2px;
 }
 
 .unassign-btn:hover:not(:disabled) {
@@ -3223,12 +3218,13 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 3000; /* Повышен z-index */
   padding: 1rem;
 }
 
 .modal {
-  background: var(--color-bg-card);
+  background: #ffffff; /* Явный белый фон */
+  opacity: 1;
   border-radius: 0.75rem;
   display: flex;
   flex-direction: column;
@@ -3251,7 +3247,7 @@ onUnmounted(() => {
   padding: 1.25rem 1.5rem;
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
-  background: var(--color-bg);
+  background: #f8fafc; /* Светлый фон заголовка */
 }
 
 .modal-header h3 {
@@ -3281,7 +3277,7 @@ onUnmounted(() => {
   padding: 1.25rem 1.5rem;
   overflow-y: auto;
   flex: 1;
-  background: var(--color-bg-card);
+  background: #ffffff; /* Белый фон тела */
 }
 
 .modal-footer {
@@ -3290,7 +3286,7 @@ onUnmounted(() => {
   gap: 0.75rem;
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--color-border);
-  background: var(--color-bg);
+  background: #ffffff; /* ИЗМЕНЕНО: Белый фон футера вместо серого */
   flex-shrink: 0;
 }
 
@@ -3324,7 +3320,7 @@ onUnmounted(() => {
   font-size: 0.95rem;
   transition: border-color 0.2s, box-shadow 0.2s;
   box-sizing: border-box;
-  background: var(--color-bg-card);
+  background: #ffffff; /* Явный белый фон */
   color: var(--color-text-primary);
 }
 
@@ -3370,27 +3366,32 @@ onUnmounted(() => {
 }
 
 .modal-cancel {
-  background: #e5e7eb;
+  background: #ffffff;
   color: var(--color-text-primary);
+  border: 1px solid var(--color-border); /* Добавлена рамка для видимости */
 }
 
 .modal-cancel:hover {
-  background: #d1d5db;
+  background: #f3f4f6;
+  border-color: #cbd5e1;
 }
 
 /* 🔵 Кнопка "Создать" в модальном окне — СИНЯЯ */
 .modal-confirm {
   background: var(--color-primary);
   color: white;
+  box-shadow: 0 2px 4px rgba(72, 146, 180, 0.3); /* Тень для выделения */
 }
 
 .modal-confirm:hover:not(:disabled) {
   background: var(--color-primary-hover);
+  box-shadow: 0 4px 6px rgba(72, 146, 180, 0.4);
 }
 
 .modal-confirm:disabled {
   background: #9ca3af;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .capacity-controls {
@@ -3513,6 +3514,242 @@ onUnmounted(() => {
     justify-content: center;
     margin-bottom: 0.5rem;
   }
+  .modal {
+    max-width: 100%;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding: 1rem;
+  }
+  .modal-footer {
+    flex-direction: column-reverse;
+  }
+  .modal-cancel,
+  .modal-confirm {
+    width: 100%;
+  }
+}
+/* === ГЛОБАЛЬНЫЕ СТИЛИ ДЛЯ МОДАЛЬНЫХ ОКОН === */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+}
+
+.modal {
+  background: #ffffff;
+  border-radius: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  width: 95%;
+  max-width: 700px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.modal-lg {
+  max-width: 800px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+  background: #f8fafc;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #1f2937;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  display: flex;
+  align-items: center;
+  transition: background 0.2s;
+}
+
+.modal-close:hover {
+  color: #1f2937;
+  background: #e2e8f0;
+}
+
+.modal-body {
+  padding: 1.25rem 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+  background: #ffffff;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  flex-shrink: 0;
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group:last-child {
+  margin-bottom: 0;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 500;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.form-group label .optional {
+  font-weight: normal;
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.375rem;
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+  background: #ffffff;
+  color: #1f2937;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #4892b4;
+  box-shadow: 0 0 0 3px rgba(72, 146, 180, 0.1);
+}
+
+.form-input:disabled {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.form-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.form-input[type="number"]::-webkit-outer-spin-button,
+.form-input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.hint {
+  display: block;
+  margin-top: 0.375rem;
+  color: #6b7280;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.modal-cancel,
+.modal-confirm {
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.2s;
+  font-size: 0.9rem;
+  min-width: 5rem;
+}
+
+.modal-cancel {
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
+.modal-cancel:hover {
+  background: #d1d5db;
+}
+
+.modal-confirm {
+  background: #4892b4;
+  color: white;
+}
+
+.modal-confirm:hover:not(:disabled) {
+  background: #3a7a99;
+}
+
+.modal-confirm:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.capacity-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.capacity-btn {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: #1f2937;
+  transition: all 0.2s;
+}
+
+.capacity-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+  border-color: #6b7280;
+}
+
+.capacity-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.capacity-input {
+  width: 4rem;
+  text-align: center;
+  padding: 0.375rem;
+}
+
+@media (max-width: 768px) {
   .modal {
     max-width: 100%;
     max-height: 100vh;
