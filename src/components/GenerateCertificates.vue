@@ -26,7 +26,7 @@
           />
 
           <div v-if="!files.excel" class="upload-prompt">
-            <span class="icon"></span>
+            <span class="icon">📊</span>
             <p class="formats">
               Перетащите Excel-файл сюда или кликните для выбора
             </p>
