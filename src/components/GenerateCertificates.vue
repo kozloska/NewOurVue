@@ -1,6 +1,6 @@
 <template>
   <div class="certificates-page">
-    <h2>🎓 Генерация удостоверений</h2>
+    <h2>Генерация удостоверений</h2>
 
     <!-- Секция: Выбор файлов (ДВЕ ЗОНЫ В ОДНУ СТРОКУ) -->
     <div class="upload-container">
@@ -9,7 +9,10 @@
         <div
           class="drop-zone"
           :class="{ 'drag-over': dragOverExcel }"
-          @dragover.prevent="dragOverExcel = true"
+          @dragover.prevent="
+            dragOverExcel = true;
+            dragOverWord = false;
+          "
           @dragleave="dragOverExcel = false"
           @drop="onDropExcel"
           @click="$refs.excelInput.click()"
@@ -23,7 +26,7 @@
           />
 
           <div v-if="!files.excel" class="upload-prompt">
-            <span class="icon">📊</span>
+            <span class="icon"></span>
             <p class="formats">
               Перетащите Excel-файл сюда или кликните для выбора
             </p>
@@ -44,7 +47,10 @@
         <div
           class="drop-zone"
           :class="{ 'drag-over': dragOverWord }"
-          @dragover.prevent="dragOverWord = true"
+          @dragover.prevent="
+            dragOverWord = true;
+            dragOverExcel = false;
+          "
           @dragleave="dragOverWord = false"
           @drop="onDropWord"
           @click="$refs.wordInput.click()"
@@ -116,7 +122,7 @@
       <button @click="successMessage = ''" class="alert-close">✕</button>
     </div>
 
-    <!-- Инструкция (ОФОРМЛЕНИЕ КАК В UploadList.vue) -->
+    <!-- Инструкция -->
     <div class="instructions">
       <h3>Инструкции по генерации:</h3>
       <ol>
@@ -124,10 +130,10 @@
           Подготовьте Excel-файл со следующими колонками:
           <ul>
             <li>
-              <strong>Столбец A (1):</strong> Регистрационный номер
+              <strong>Столбец A (0):</strong> Регистрационный номер
               удостоверения
             </li>
-            <li><strong>Столбец B (2):</strong> ФИО слушателя полностью</li>
+            <li><strong>Столбец B (1):</strong> ФИО слушателя полностью</li>
           </ul>
         </li>
         <li>
@@ -186,34 +192,55 @@ export default {
       const file = e.target.files[0];
       if (file) this.setFile(type, file);
     },
+
+    // --- ИСПРАВЛЕННЫЕ МЕТОДЫ DROP ---
     onDropExcel(e) {
+      e.preventDefault(); // Обязательно предотвращаем стандартное поведение
+      e.stopPropagation();
       this.dragOverExcel = false;
-      const file = e.dataTransfer.files[0];
-      if (file) this.setFile("excel", file);
+
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        this.setFile("excel", files[0]);
+      }
     },
+
     onDropWord(e) {
+      e.preventDefault(); // Обязательно предотвращаем стандартное поведение
+      e.stopPropagation();
       this.dragOverWord = false;
-      const file = e.dataTransfer.files[0];
-      if (file) this.setFile("template", file);
+
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        this.setFile("template", files[0]);
+      }
     },
+    // -------------------------------
+
     setFile(type, file) {
-      if (type === "excel" && !file.name.match(/\.(xlsx|xls)$/i)) {
-        this.errorMessage =
-          "Неверный формат! Поддерживаются только .xlsx и .xls файлы.";
-        return;
+      // Валидация типов файлов
+      if (type === "excel") {
+        if (!file.name.match(/\.(xlsx|xls)$/i)) {
+          this.errorMessage =
+            "Для этой зоны нужен файл Excel (.xlsx или .xls)!";
+          return;
+        }
+      } else if (type === "template") {
+        if (!file.name.match(/\.docx$/i)) {
+          this.errorMessage = "Для этой зоны нужен файл Word (.docx)!";
+          return;
+        }
       }
-      if (type === "template" && !file.name.match(/\.docx$/i)) {
-        this.errorMessage =
-          "Неверный формат! Поддерживается только .docx файл.";
-        return;
-      }
+
       if (file.size > 10 * 1024 * 1024) {
         this.errorMessage = "Файл слишком большой! Максимальный размер 10MB";
         return;
       }
+
       this.files[type] = file;
       this.errorMessage = "";
     },
+
     clearFile(type) {
       this.files[type] = null;
       if (type === "excel" && this.$refs.excelInput) {
@@ -223,6 +250,7 @@ export default {
         this.$refs.wordInput.value = "";
       }
     },
+
     async generateCertificates() {
       if (!this.canGenerate) {
         this.errorMessage = "Выберите оба файла для генерации";
@@ -311,7 +339,7 @@ export default {
 </script>
 
 <style scoped>
-/* === БАЗОВЫЕ СТИЛИ (как в UploadList) === */
+/* ... (стили остаются теми же, что были ранее) ... */
 .certificates-page {
   max-width: 800px;
   margin: 0 auto;
@@ -424,13 +452,13 @@ h2 {
 
 .generate-btn {
   width: 100%;
-  padding: 14px 24px;
+  padding: 14px 24px; /* Увеличил padding для кнопки */
   border: none;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s;
-  font-size: 1.1rem;
+  font-size: 1.1rem; /* Увеличил шрифт кнопки */
   background-color: #4892b4;
   color: white;
   display: flex;
@@ -449,9 +477,9 @@ h2 {
 }
 
 .spinner {
-  width: 1rem;
-  height: 1rem;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 3px solid rgba(255, 255, 255, 0.3);
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -550,7 +578,6 @@ h2 {
   opacity: 1;
 }
 
-/* === ИНСТРУКЦИЯ (СТИЛЬ КАК В UploadList.vue) === */
 .instructions {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -592,7 +619,6 @@ h2 {
   color: #334155;
 }
 
-/* === АДАПТИВ (как в UploadList) === */
 @media (max-width: 768px) {
   .certificates-page {
     padding: 16px;
