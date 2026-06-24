@@ -78,6 +78,15 @@
           <span class="menu-icon">🗄️</span>
           <span class="menu-text">Архив протоколов</span>
         </router-link>
+        <router-link
+          v-if="isAdmin"
+          to="/generatecertificates"
+          class="menu-item"
+          active-class="active"
+        >
+          <span class="menu-icon">🎫</span>
+          <span class="menu-text">Генерация удостоверений</span>
+        </router-link>
         <!-- 
         <router-link
           v-if="isAdmin"

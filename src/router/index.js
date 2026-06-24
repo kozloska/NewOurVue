@@ -64,6 +64,12 @@ const routes = [
     meta: { requiresAuth: true }, // добавил защиту
   },
   {
+    path: "/generatecertificates",
+    name: "GenerateCertificates",
+    component: () => import("../components/GenerateCertificates.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
     path: "/management",
     name: "ManagementPanel",
     component: () => import("../components/ManagementPanel.vue"),
