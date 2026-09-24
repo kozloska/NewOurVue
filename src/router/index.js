@@ -70,6 +70,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: "/generatecontracts",
+    name: "GenerateContracts",
+    component: () => import("../components/GenerateContracts.vue"),
+    meta: { requiresAuth: true },
+  },
+  {
     path: "/management",
     name: "ManagementPanel",
     component: () => import("../components/ManagementPanel.vue"),

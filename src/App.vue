@@ -87,6 +87,17 @@
           <span class="menu-icon">🎫</span>
           <span class="menu-text">Генерация удостоверений</span>
         </router-link>
+
+        <!-- НОВЫЙ БЛОК: Генерация договоров -->
+        <router-link
+          v-if="isAdmin"
+          to="/generatecontracts"
+          class="menu-item"
+          active-class="active"
+        >
+          <span class="menu-icon">📜</span>
+          <span class="menu-text">Генерация договоров с физ. слушателями</span>
+        </router-link>
         <!-- 
         <router-link
           v-if="isAdmin"
